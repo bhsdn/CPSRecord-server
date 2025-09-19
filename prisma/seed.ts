@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
+
   const addDays = (days: number) => {
     const now = new Date();
     now.setDate(now.getDate() + days);
@@ -18,6 +19,7 @@ async function main() {
     create: {
       name: '默认 CPS 推广项目',
       description: '包含多个示例子项目与内容，帮助你快速体验功能',
+
     },
   });
 
@@ -87,6 +89,7 @@ async function main() {
       subProjectId: subProject.id,
       contentTypeId: shortLinkType.id,
       contentValue: 'https://s.example.com/deal-001',
+
     },
   });
 

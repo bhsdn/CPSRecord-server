@@ -1,3 +1,4 @@
+
 const MS_IN_DAY = 24 * 60 * 60 * 1000;
 
 export type ExpiryStatus = 'safe' | 'warning' | 'danger';
@@ -48,4 +49,5 @@ export function resolveExpiryStatus(
   }
 
   return { status, daysRemaining };
+
 }
