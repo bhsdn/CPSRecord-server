@@ -7,10 +7,8 @@ import {
   ParseIntPipe,
   Post,
   Put,
-  UseInterceptors,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { ResponseInterceptor } from '../../common/interceptors/response.interceptor';
 import { ApiResponseWrapper } from '../../common/decorators/api-response.decorator';
 import { ContentTypesService } from './content-types.service';
 import { CreateContentTypeDto } from './dto/create-content-type.dto';
@@ -18,7 +16,6 @@ import { UpdateContentTypeDto } from './dto/update-content-type.dto';
 
 @ApiTags('内容类型管理')
 @Controller('content-types')
-@UseInterceptors(ResponseInterceptor)
 export class ContentTypesController {
   constructor(private readonly contentTypesService: ContentTypesService) {}
 

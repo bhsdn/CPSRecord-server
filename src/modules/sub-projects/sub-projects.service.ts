@@ -5,6 +5,7 @@ import { UpdateSubProjectDto } from './dto/update-sub-project.dto';
 import { QuerySubProjectDto } from './dto/query-sub-project.dto';
 import { ReorderSubProjectDto } from './dto/reorder-sub-project.dto';
 import { Prisma } from '@prisma/client';
+import { resolveExpiryStatus } from '../../common/utils/date.util';
 
 @Injectable()
 export class SubProjectsService {
@@ -26,15 +27,17 @@ export class SubProjectsService {
         : {}),
     };
 
-    return this.prisma.subProject.findMany({
+    const subProjects = await this.prisma.subProject.findMany({
       where,
       orderBy: { sortOrder: 'asc' },
       include: {
         project: true,
         contents: { where: { isActive: true }, include: { contentType: true } },
-        textCommands: { where: { isActive: true } },
+        textCommands: { where: { isActive: true }, orderBy: { createdAt: 'desc' } },
       },
     });
+
+    return subProjects.map((subProject) => this.mapSubProject(subProject));
   }
 
   async findOne(id: number) {
@@ -43,7 +46,7 @@ export class SubProjectsService {
       include: {
         project: true,
         contents: { where: { isActive: true }, include: { contentType: true } },
-        textCommands: { where: { isActive: true } },
+        textCommands: { where: { isActive: true }, orderBy: { createdAt: 'desc' } },
       },
     });
 
@@ -51,26 +54,28 @@ export class SubProjectsService {
       throw new NotFoundException('子项目不存在');
     }
 
-    return subProject;
+    return this.mapSubProject(subProject);
   }
 
   async create(dto: CreateSubProjectDto) {
     await this.ensureProjectExists(dto.projectId);
 
     const { projectId, sortOrder, ...rest } = dto;
-    return this.prisma.subProject.create({
+    const subProject = await this.prisma.subProject.create({
       data: {
         ...rest,
         project: { connect: { id: projectId } },
         sortOrder: sortOrder ?? (await this.getNextSortOrder(projectId)),
       },
     });
+
+    return this.findOne(subProject.id);
   }
 
   async update(id: number, dto: UpdateSubProjectDto) {
     const subProject = await this.ensureExists(id);
 
-    return this.prisma.subProject.update({
+    await this.prisma.subProject.update({
       where: { id: subProject.id },
       data: {
         name: dto.name ?? subProject.name,
@@ -78,6 +83,8 @@ export class SubProjectsService {
         sortOrder: dto.sortOrder ?? subProject.sortOrder,
       },
     });
+
+    return this.findOne(id);
   }
 
   async remove(id: number) {
@@ -143,5 +150,56 @@ export class SubProjectsService {
     });
 
     return (latest?.sortOrder ?? 0) + 1;
+  }
+
+  private mapSubProject(subProject: any) {
+    const contents = subProject.contents?.map((content: any) => {
+      const meta = resolveExpiryStatus(content.expiryDate);
+      return {
+        id: content.id,
+        subProjectId: content.subProjectId,
+        contentTypeId: content.contentTypeId,
+        contentValue: content.contentValue,
+        expiryDays: content.expiryDays ?? null,
+        expiryDate: content.expiryDate,
+        createdAt: content.createdAt,
+        updatedAt: content.updatedAt,
+        contentType: content.contentType,
+        expiryStatus: meta?.status ?? null,
+        daysRemaining: meta?.daysRemaining ?? null,
+      };
+    });
+
+    const textCommands = subProject.textCommands?.map((command: any) => {
+      const meta = resolveExpiryStatus(command.expiryDate);
+      return {
+        id: command.id,
+        subProjectId: command.subProjectId,
+        commandText: command.commandText,
+        expiryDays: command.expiryDays ?? null,
+        expiryDate: command.expiryDate,
+        createdAt: command.createdAt,
+        updatedAt: command.updatedAt,
+        expiryStatus: meta?.status ?? null,
+        daysRemaining: meta?.daysRemaining ?? null,
+      };
+    });
+
+    return {
+      id: subProject.id,
+      projectId: subProject.projectId,
+      name: subProject.name,
+      description: subProject.description,
+      sortOrder: subProject.sortOrder,
+      createdAt: subProject.createdAt,
+      updatedAt: subProject.updatedAt,
+      project: subProject.project
+        ? { id: subProject.project.id, name: subProject.project.name }
+        : undefined,
+      contentCount: contents?.length ?? 0,
+      textCommandCount: textCommands?.length ?? 0,
+      contents,
+      textCommands,
+    };
   }
 }

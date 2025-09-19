@@ -37,4 +37,5 @@ npm run start:dev
 npm run seed
 ```
 
-服务默认在 `http://localhost:3000` 运行，Swagger 文档位于 `http://localhost:3000/docs`。
+服务默认在 `http://localhost:3000` 运行，所有接口统一以 `/api` 为前缀，Swagger 文档位于 `http://localhost:3000/api/docs`。
+

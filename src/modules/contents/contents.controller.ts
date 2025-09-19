@@ -8,10 +8,8 @@ import {
   Post,
   Put,
   Query,
-  UseInterceptors,
 } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
-import { ResponseInterceptor } from '../../common/interceptors/response.interceptor';
 import { ApiResponseWrapper } from '../../common/decorators/api-response.decorator';
 import { ContentsService } from './contents.service';
 import { CreateContentDto } from './dto/create-content.dto';
@@ -20,13 +18,18 @@ import { QueryContentDto } from './dto/query-content.dto';
 
 @ApiTags('内容管理')
 @Controller('contents')
-@UseInterceptors(ResponseInterceptor)
 export class ContentsController {
   constructor(private readonly contentsService: ContentsService) {}
 
   @Get()
   @ApiOperation({ summary: '获取子项目内容列表' })
   @ApiQuery({ name: 'subProjectId', required: false, type: Number, description: '子项目ID' })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['safe', 'warning', 'danger'],
+    description: '根据到期状态筛选内容',
+  })
   @ApiResponseWrapper({ status: 200, description: '获取内容列表成功', type: 'array' })
   async findAll(@Query() query: QueryContentDto) {
     return this.contentsService.findAll(query);

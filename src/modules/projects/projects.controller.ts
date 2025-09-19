@@ -8,10 +8,8 @@ import {
   Post,
   Put,
   Query,
-  UseInterceptors,
 } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
-import { ResponseInterceptor } from '../../common/interceptors/response.interceptor';
 import { ApiResponseWrapper } from '../../common/decorators/api-response.decorator';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -20,7 +18,6 @@ import { QueryProjectDto } from './dto/query-project.dto';
 
 @ApiTags('项目管理')
 @Controller('projects')
-@UseInterceptors(ResponseInterceptor)
 export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
 

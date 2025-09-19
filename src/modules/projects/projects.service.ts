@@ -5,6 +5,7 @@ import { UpdateProjectDto } from './dto/update-project.dto';
 import { QueryProjectDto } from './dto/query-project.dto';
 import { buildPaginationResponse } from '../../common/utils/response.util';
 import { Prisma } from '@prisma/client';
+import { resolveExpiryStatus } from '../../common/utils/date.util';
 
 @Injectable()
 export class ProjectsService {
@@ -33,12 +34,24 @@ export class ProjectsService {
         skip: (page - 1) * limit,
         take: limit,
         include: {
-          _count: { select: { subProjects: { where: { isActive: true } } } },
+          subProjects: {
+            where: { isActive: true },
+            select: { id: true },
+          },
         },
       }),
     ]);
 
-    return buildPaginationResponse(items, total, page, limit);
+    const projects = items.map((project) => ({
+      id: project.id,
+      name: project.name,
+      description: project.description,
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
+      subProjectCount: project.subProjects.length,
+    }));
+
+    return buildPaginationResponse(projects, total, page, limit);
   }
 
   async findOne(id: number) {
@@ -48,6 +61,16 @@ export class ProjectsService {
         subProjects: {
           where: { isActive: true },
           orderBy: { sortOrder: 'asc' },
+          include: {
+            contents: {
+              where: { isActive: true },
+              include: { contentType: true },
+            },
+            textCommands: {
+              where: { isActive: true },
+              orderBy: { createdAt: 'desc' },
+            },
+          },
         },
       },
     });
@@ -56,7 +79,14 @@ export class ProjectsService {
       throw new NotFoundException('项目不存在');
     }
 
-    return project;
+    return {
+      id: project.id,
+      name: project.name,
+      description: project.description,
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
+      subProjects: project.subProjects.map((subProject) => this.mapSubProject(subProject)),
+    };
   }
 
   async create(createProjectDto: CreateProjectDto) {
@@ -100,7 +130,7 @@ export class ProjectsService {
   async getSubProjects(projectId: number) {
     await this.ensureExists(projectId);
 
-    return this.prisma.subProject.findMany({
+    const subProjects = await this.prisma.subProject.findMany({
       where: { projectId, isActive: true },
       orderBy: { sortOrder: 'asc' },
       include: {
@@ -114,6 +144,8 @@ export class ProjectsService {
         },
       },
     });
+
+    return subProjects.map((subProject) => this.mapSubProject(subProject));
   }
 
   private async ensureExists(id: number) {
@@ -125,5 +157,53 @@ export class ProjectsService {
     if (!exists) {
       throw new NotFoundException('项目不存在');
     }
+  }
+
+  private mapSubProject(subProject: any) {
+    const contents = subProject.contents?.map((content: any) => {
+      const meta = resolveExpiryStatus(content.expiryDate);
+      return {
+        id: content.id,
+        subProjectId: content.subProjectId,
+        contentTypeId: content.contentTypeId,
+        contentValue: content.contentValue,
+        expiryDays: content.expiryDays ?? null,
+        expiryDate: content.expiryDate,
+        createdAt: content.createdAt,
+        updatedAt: content.updatedAt,
+        contentType: content.contentType,
+        expiryStatus: meta?.status ?? null,
+        daysRemaining: meta?.daysRemaining ?? null,
+      };
+    });
+
+    const textCommands = subProject.textCommands?.map((command: any) => {
+      const meta = resolveExpiryStatus(command.expiryDate);
+      return {
+        id: command.id,
+        subProjectId: command.subProjectId,
+        commandText: command.commandText,
+        expiryDays: command.expiryDays ?? null,
+        expiryDate: command.expiryDate,
+        createdAt: command.createdAt,
+        updatedAt: command.updatedAt,
+        expiryStatus: meta?.status ?? null,
+        daysRemaining: meta?.daysRemaining ?? null,
+      };
+    });
+
+    return {
+      id: subProject.id,
+      projectId: subProject.projectId,
+      name: subProject.name,
+      description: subProject.description,
+      sortOrder: subProject.sortOrder,
+      createdAt: subProject.createdAt,
+      updatedAt: subProject.updatedAt,
+      contentCount: contents?.length ?? 0,
+      textCommandCount: textCommands?.length ?? 0,
+      contents,
+      textCommands,
+    };
   }
 }

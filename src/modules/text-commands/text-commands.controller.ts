@@ -8,25 +8,29 @@ import {
   Post,
   Put,
   Query,
-  UseInterceptors,
 } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
-import { ResponseInterceptor } from '../../common/interceptors/response.interceptor';
 import { ApiResponseWrapper } from '../../common/decorators/api-response.decorator';
 import { TextCommandsService } from './text-commands.service';
 import { CreateTextCommandDto } from './dto/create-text-command.dto';
 import { UpdateTextCommandDto } from './dto/update-text-command.dto';
 import { QueryTextCommandDto } from './dto/query-text-command.dto';
+import { BulkDeleteTextCommandDto } from './dto/bulk-delete-text-command.dto';
 
 @ApiTags('文字口令管理')
 @Controller('text-commands')
-@UseInterceptors(ResponseInterceptor)
 export class TextCommandsController {
   constructor(private readonly textCommandsService: TextCommandsService) {}
 
   @Get()
   @ApiOperation({ summary: '获取文字口令列表' })
   @ApiQuery({ name: 'subProjectId', required: false, type: Number, description: '子项目ID' })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['safe', 'warning', 'danger'],
+    description: '根据到期状态筛选口令',
+  })
   @ApiResponseWrapper({ status: 200, description: '获取文字口令列表成功', type: 'array' })
   async findAll(@Query() query: QueryTextCommandDto) {
     return this.textCommandsService.findAll(query);
@@ -61,5 +65,12 @@ export class TextCommandsController {
   @ApiResponseWrapper({ status: 200, description: '删除文字口令成功' })
   async remove(@Param('id', ParseIntPipe) id: number) {
     return this.textCommandsService.remove(id);
+  }
+
+  @Post('bulk-delete')
+  @ApiOperation({ summary: '批量删除过期文字口令' })
+  @ApiResponseWrapper({ status: 200, description: '批量删除文字口令成功' })
+  async bulkRemove(@Body() dto: BulkDeleteTextCommandDto) {
+    return this.textCommandsService.bulkRemoveExpired(dto);
   }
 }
