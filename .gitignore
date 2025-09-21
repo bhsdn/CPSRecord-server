@@ -166,3 +166,5 @@ coverage/
 
 # 部署相关
 .vercel
+
+docs/
