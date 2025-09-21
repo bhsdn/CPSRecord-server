@@ -17,6 +17,7 @@ import { isURL } from 'class-validator';
 
 @Injectable()
 export class ContentsService {
+  // 所有内容相关的数据库操作都放在这里
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(query: QueryContentDto) {
@@ -47,9 +48,11 @@ export class ContentsService {
   }
 
   async create(dto: CreateContentDto) {
+    // 创建前需要校验子项目与内容类型是否存在
     await this.ensureSubProjectExists(dto.subProjectId);
     const contentType = await this.ensureContentTypeExists(dto.contentTypeId);
 
+    // 同一个子项目只能有一种内容类型，避免重复
     const existing = await this.prisma.subProjectContent.findFirst({
       where: {
         subProjectId: dto.subProjectId,
@@ -62,6 +65,7 @@ export class ContentsService {
       throw new BadRequestException('该子项目已存在相同类型的内容');
     }
 
+    // 根据内容类型的配置校验有效期和内容值
     this.assertExpiryRule(contentType.hasExpiry, dto.expiryDays);
     this.assertContentValue(contentType.fieldType, dto.contentValue);
 
@@ -85,6 +89,7 @@ export class ContentsService {
     let contentType = content.contentType;
 
     if (dto.contentTypeId && dto.contentTypeId !== content.contentTypeId) {
+      // 切换内容类型时需要重新校验是否重复
       contentType = await this.ensureContentTypeExists(dto.contentTypeId);
       const duplicate = await this.prisma.subProjectContent.findFirst({
         where: {
@@ -100,6 +105,7 @@ export class ContentsService {
     }
 
     if (dto.contentValue) {
+      // 更新内容值时也需要按类型做校验
       this.assertContentValue(contentType.fieldType, dto.contentValue);
     }
 
@@ -128,6 +134,7 @@ export class ContentsService {
   async remove(id: number) {
     await this.ensureExists(id);
 
+    // 软删除，保留历史记录
     await this.prisma.subProjectContent.update({
       where: { id },
       data: { isActive: false },
@@ -137,6 +144,7 @@ export class ContentsService {
   }
 
   private async ensureExists(id: number) {
+    // 共用的存在性校验，返回带内容类型的对象
     const content = await this.prisma.subProjectContent.findFirst({
       where: { id, isActive: true },
       include: { contentType: true, subProject: true },
@@ -167,6 +175,7 @@ export class ContentsService {
   }
 
   private assertExpiryRule(hasExpiry: boolean, expiryDays?: number) {
+    // 不同类型的内容对有效期有强制要求
     if (hasExpiry && (expiryDays === undefined || expiryDays === null)) {
       throw new BadRequestException('该内容类型需要设置有效天数');
     }
@@ -215,6 +224,7 @@ export class ContentsService {
       return {};
     }
 
+    // 通过状态过滤不同有效期范围的数据
     const today = new Date();
     const startOfToday = new Date(
       Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()),
@@ -244,6 +254,7 @@ export class ContentsService {
   }
 
   private mapContent(content: any) {
+    // 将数据库字段转换成前端友好的结构，并附带有效期状态
     const meta = resolveExpiryStatus(content.expiryDate);
     return {
       id: content.id,

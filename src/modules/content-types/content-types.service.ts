@@ -9,15 +9,18 @@ import { UpdateContentTypeDto } from './dto/update-content-type.dto';
 
 @Injectable()
 export class ContentTypesService {
+  // 内容类型的增删改查逻辑
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll() {
+    // 直接返回全部类型，前端可用于下拉选择
     return this.prisma.contentType.findMany({
       orderBy: { createdAt: 'asc' },
     });
   }
 
   async create(dto: CreateContentTypeDto) {
+    // 创建前校验名称是否重复
     const existing = await this.prisma.contentType.findUnique({
       where: { name: dto.name },
     });
@@ -37,6 +40,7 @@ export class ContentTypesService {
     }
 
     if (dto.name && dto.name !== type.name) {
+      // 普通类型也需要保证名称唯一
       const exists = await this.prisma.contentType.findUnique({
         where: { name: dto.name },
       });
@@ -71,6 +75,7 @@ export class ContentTypesService {
   }
 
   private async ensureExists(id: number) {
+    // 共用校验，避免操作不存在的类型
     const type = await this.prisma.contentType.findUnique({ where: { id } });
     if (!type) {
       throw new NotFoundException('内容类型不存在');

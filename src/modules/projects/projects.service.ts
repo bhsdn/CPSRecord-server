@@ -9,11 +9,13 @@ import { resolveExpiryStatus } from '../../common/utils/date.util';
 
 @Injectable()
 export class ProjectsService {
+  // 依赖 PrismaService 来完成数据库操作
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(query: QueryProjectDto) {
     const { page = 1, limit = 10, search } = query;
 
+    // 组合分页 + 搜索条件，仅返回未删除的项目
     const where: Prisma.ProjectWhereInput = {
       isActive: true,
       ...(search
@@ -26,6 +28,7 @@ export class ProjectsService {
         : {}),
     };
 
+    // 使用事务同时拿到总数和分页列表，避免两次请求数据不一致
     const [total, items] = await this.prisma.$transaction([
       this.prisma.project.count({ where }),
       this.prisma.project.findMany({
@@ -42,6 +45,7 @@ export class ProjectsService {
       }),
     ]);
 
+    // 返回给前端的字段做了一层整理，避免暴露无用信息
     const projects = items.map((project) => ({
       id: project.id,
       name: project.name,
@@ -79,6 +83,7 @@ export class ProjectsService {
       throw new NotFoundException('项目不存在');
     }
 
+    // 聚合子项目、内容、口令等信息，方便前端一次性渲染
     return {
       id: project.id,
       name: project.name,
@@ -105,6 +110,7 @@ export class ProjectsService {
   async remove(id: number) {
     await this.ensureExists(id);
 
+    // 项目删除时同时软删除关联的子项目/内容/口令
     await this.prisma.$transaction([
       this.prisma.subProjectContent.updateMany({
         where: { subProject: { projectId: id } },
@@ -149,6 +155,7 @@ export class ProjectsService {
   }
 
   private async ensureExists(id: number) {
+    // 公共校验方法：判断项目是否存在且未删除
     const exists = await this.prisma.project.findFirst({
       where: { id, isActive: true },
       select: { id: true },
@@ -160,6 +167,7 @@ export class ProjectsService {
   }
 
   private mapSubProject(subProject: any) {
+    // 子项目下的内容会附带有效期状态，前端直接渲染标签即可
     const contents = subProject.contents?.map((content: any) => {
       const meta = resolveExpiryStatus(content.expiryDate);
       return {

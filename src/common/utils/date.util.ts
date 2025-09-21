@@ -1,7 +1,9 @@
+// 一天的毫秒数，用于计算有效期剩余天数
 const MS_IN_DAY = 24 * 60 * 60 * 1000;
 
 export type ExpiryStatus = 'safe' | 'warning' | 'danger';
 
+// 根据有效天数推算出到期日期（按 UTC 计算，避免时区问题）
 export function calculateExpiryDate(days?: number | null): Date | null {
   if (days === null || days === undefined) {
     return null;
@@ -15,6 +17,7 @@ export function calculateExpiryDate(days?: number | null): Date | null {
   return baseDate;
 }
 
+// 计算距离到期日还剩几天，负数代表已过期
 export function calculateDaysDiff(expiryDate?: Date | string | null): number | null {
   if (!expiryDate) {
     return null;
@@ -30,6 +33,7 @@ export function calculateDaysDiff(expiryDate?: Date | string | null): number | n
   return Math.ceil((expiry.getTime() - startOfToday.getTime()) / MS_IN_DAY);
 }
 
+// 根据剩余天数得出安全状态，用于展示不同颜色
 export function resolveExpiryStatus(
   expiryDate?: Date | string | null,
 ): { status: ExpiryStatus; daysRemaining: number | null } | null {

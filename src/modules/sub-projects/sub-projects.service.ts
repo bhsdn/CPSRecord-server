@@ -9,11 +9,13 @@ import { resolveExpiryStatus } from '../../common/utils/date.util';
 
 @Injectable()
 export class SubProjectsService {
+  // 子项目的列表、排序、删除等逻辑
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(query: QuerySubProjectDto) {
     const { projectId, search } = query;
 
+    // 支持按照项目和关键字过滤
     const where: Prisma.SubProjectWhereInput = {
       isActive: true,
       ...(projectId ? { projectId } : {}),
@@ -133,6 +135,7 @@ export class SubProjectsService {
   }
 
   private async ensureProjectExists(projectId: number) {
+    // 创建/更新子项目前需要确认所属项目有效
     const project = await this.prisma.project.findFirst({
       where: { id: projectId, isActive: true },
     });
@@ -143,6 +146,7 @@ export class SubProjectsService {
   }
 
   private async getNextSortOrder(projectId: number) {
+    // 新增子项目时默认排在最后
     const latest = await this.prisma.subProject.findFirst({
       where: { projectId, isActive: true },
       orderBy: { sortOrder: 'desc' },
@@ -153,6 +157,7 @@ export class SubProjectsService {
   }
 
   private mapSubProject(subProject: any) {
+    // 子项目下的内容和口令都会附带有效期元信息
     const contents = subProject.contents?.map((content: any) => {
       const meta = resolveExpiryStatus(content.expiryDate);
       return {
