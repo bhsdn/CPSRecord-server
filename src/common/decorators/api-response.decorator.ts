@@ -1,21 +1,23 @@
 import { applyDecorators } from '@nestjs/common';
 import { ApiResponse, ApiResponseOptions } from '@nestjs/swagger';
 
-interface ApiResponseWrapperOptions extends ApiResponseOptions {
-  type?: 'array' | 'object';
-}
+type ApiResponseWrapperOptions = Omit<ApiResponseOptions, 'schema'> & {
+  dataType?: 'array' | 'object';
+};
 
 export function ApiResponseWrapper(options: ApiResponseWrapperOptions) {
+  const { dataType = 'object', ...apiOptions } = options;
   return applyDecorators(
     ApiResponse({
-      ...options,
+      ...apiOptions,
       schema: {
+        type: 'object',
         properties: {
           success: { type: 'boolean', example: true },
-          message: { type: 'string', example: options.description ?? 'success' },
-          code: { type: 'number', example: options.status ?? 200 },
+          message: { type: 'string', example: apiOptions.description ?? 'success' },
+          code: { type: 'number', example: apiOptions.status ?? 200 },
           timestamp: { type: 'string', format: 'date-time' },
-          data: options.type === 'array'
+          data: dataType === 'array'
             ? { type: 'array', items: { type: 'object' } }
             : { type: 'object' },
           error: { type: 'string', nullable: true },

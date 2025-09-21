@@ -21,7 +21,7 @@ export class ContentTypesController {
 
   @Get()
   @ApiOperation({ summary: '获取内容类型列表' })
-  @ApiResponseWrapper({ status: 200, description: '获取内容类型列表成功', type: 'array' })
+  @ApiResponseWrapper({ status: 200, description: '获取内容类型列表成功', dataType: 'array' })
   async findAll() {
     return this.contentTypesService.findAll();
   }

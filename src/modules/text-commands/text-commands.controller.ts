@@ -31,7 +31,7 @@ export class TextCommandsController {
     enum: ['safe', 'warning', 'danger'],
     description: '根据到期状态筛选口令',
   })
-  @ApiResponseWrapper({ status: 200, description: '获取文字口令列表成功', type: 'array' })
+  @ApiResponseWrapper({ status: 200, description: '获取文字口令列表成功', dataType: 'array' })
   async findAll(@Query() query: QueryTextCommandDto) {
     return this.textCommandsService.findAll(query);
   }

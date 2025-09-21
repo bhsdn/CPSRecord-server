@@ -20,8 +20,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
     let message = 'Internal server error';
     let error = 'Error';
     let details: string[] | undefined;
-
-
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       const res = exception.getResponse();
@@ -40,7 +38,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
         details = (res as Record<string, any>).message as string[];
         message = details.join('; ');
       }
-
     }
 
     this.logger.error(

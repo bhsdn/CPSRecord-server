@@ -36,7 +36,7 @@ export class ProjectsController {
     type: String,
     description: '搜索关键词',
   })
-  @ApiResponseWrapper({ status: 200, description: '获取项目列表成功', type: 'object' })
+  @ApiResponseWrapper({ status: 200, description: '获取项目列表成功', dataType: 'object' })
   async findAll(@Query() query: QueryProjectDto) {
     return this.projectsService.findAll(query);
   }
@@ -74,7 +74,7 @@ export class ProjectsController {
 
   @Get(':id/sub-projects')
   @ApiOperation({ summary: '获取项目的子项目列表' })
-  @ApiResponseWrapper({ status: 200, description: '获取子项目列表成功', type: 'array' })
+  @ApiResponseWrapper({ status: 200, description: '获取子项目列表成功', dataType: 'array' })
   async getSubProjects(@Param('id', ParseIntPipe) id: number) {
     return this.projectsService.getSubProjects(id);
   }
