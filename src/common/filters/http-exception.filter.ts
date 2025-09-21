@@ -9,6 +9,7 @@ import {
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
+  // 捕获所有异常，统一返回格式并记录日志
   private readonly logger = new Logger(HttpExceptionFilter.name);
 
   catch(exception: unknown, host: ArgumentsHost) {
@@ -20,6 +21,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     let message = 'Internal server error';
     let error = 'Error';
     let details: string[] | undefined;
+
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       const res = exception.getResponse();

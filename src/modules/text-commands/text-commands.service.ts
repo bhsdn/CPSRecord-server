@@ -17,6 +17,7 @@ import { BulkDeleteTextCommandDto } from './dto/bulk-delete-text-command.dto';
 
 @Injectable()
 export class TextCommandsService {
+  // 文字口令的增删改查都集中在这里
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(query: QueryTextCommandDto) {
@@ -47,6 +48,7 @@ export class TextCommandsService {
   }
 
   async create(dto: CreateTextCommandDto) {
+    // 创建前确认子项目是否存在
     await this.ensureSubProjectExists(dto.subProjectId);
 
     return this.prisma.textCommand
@@ -86,6 +88,7 @@ export class TextCommandsService {
   async remove(id: number) {
     await this.ensureExists(id);
 
+    // 软删除，避免直接清空历史数据
     await this.prisma.textCommand.update({
       where: { id },
       data: { isActive: false },
@@ -166,6 +169,7 @@ export class TextCommandsService {
       return {};
     }
 
+    // 与内容一致，通过有效期分三种状态
     const today = new Date();
     const startOfToday = new Date(
       Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()),
@@ -195,6 +199,7 @@ export class TextCommandsService {
   }
 
   private mapCommand(command: any) {
+    // 统一输出结构并附加有效期状态
     const meta = resolveExpiryStatus(command.expiryDate);
     return {
       id: command.id,
