@@ -22,6 +22,7 @@ export function ApiResponseWrapper(options: ApiResponseWrapperOptions) {
             : { type: 'object' },
           error: { type: 'string', nullable: true },
           details: { type: 'array', items: { type: 'string' }, nullable: true },
+
         },
       },
     }),
