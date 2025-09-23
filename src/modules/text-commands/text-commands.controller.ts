@@ -1,0 +1,87 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Put,
+  Query,
+} from '@nestjs/common';
+import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiResponseWrapper } from '../../common/decorators/api-response.decorator';
+import { TextCommandsService } from './text-commands.service';
+import { CreateTextCommandDto } from './dto/create-text-command.dto';
+import { UpdateTextCommandDto } from './dto/update-text-command.dto';
+import { QueryTextCommandDto } from './dto/query-text-command.dto';
+import { BulkDeleteTextCommandDto } from './dto/bulk-delete-text-command.dto';
+import { BulkCreateTextCommandDto } from './dto/bulk-create-text-command.dto';
+import { CacheTTL } from '../../common/decorators/cache.decorator';
+
+@ApiTags('文字口令管理')
+@Controller('text-commands')
+export class TextCommandsController {
+  constructor(private readonly textCommandsService: TextCommandsService) {}
+
+  @Get()
+  @CacheTTL(25_000)
+  @ApiOperation({ summary: '获取文字口令列表' })
+  @ApiQuery({ name: 'subProjectId', required: false, type: Number, description: '子项目ID' })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['safe', 'warning', 'danger'],
+    description: '根据到期状态筛选口令',
+  })
+  @ApiResponseWrapper({ status: 200, description: '获取文字口令列表成功', dataType: 'array' })
+  async findAll(@Query() query: QueryTextCommandDto) {
+    return this.textCommandsService.findAll(query);
+  }
+
+  @Get(':id')
+  @CacheTTL(45_000)
+  @ApiOperation({ summary: '获取文字口令详情' })
+  @ApiResponseWrapper({ status: 200, description: '获取文字口令详情成功' })
+  async findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.textCommandsService.findOne(id);
+  }
+
+  @Post()
+  @ApiOperation({ summary: '创建文字口令' })
+  @ApiResponseWrapper({ status: 201, description: '创建文字口令成功' })
+  async create(@Body() dto: CreateTextCommandDto) {
+    return this.textCommandsService.create(dto);
+  }
+
+  @Post('bulk')
+  @ApiOperation({ summary: '批量创建文字口令' })
+  @ApiResponseWrapper({ status: 201, description: '批量创建文字口令成功' })
+  async bulkCreate(@Body() dto: BulkCreateTextCommandDto) {
+    return this.textCommandsService.bulkCreate(dto);
+  }
+
+  @Put(':id')
+  @ApiOperation({ summary: '更新文字口令' })
+  @ApiResponseWrapper({ status: 200, description: '更新文字口令成功' })
+  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateTextCommandDto,
+  ) {
+    return this.textCommandsService.update(id, dto);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: '删除文字口令' })
+  @ApiResponseWrapper({ status: 200, description: '删除文字口令成功' })
+  async remove(@Param('id', ParseIntPipe) id: number) {
+    return this.textCommandsService.remove(id);
+  }
+
+  @Post('bulk-delete')
+  @ApiOperation({ summary: '批量删除过期文字口令' })
+  @ApiResponseWrapper({ status: 200, description: '批量删除文字口令成功' })
+  async bulkRemove(@Body() dto: BulkDeleteTextCommandDto) {
+    return this.textCommandsService.bulkRemoveExpired(dto);
+  }
+}
