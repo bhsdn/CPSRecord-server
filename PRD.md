@@ -49,9 +49,11 @@
 | 优先级 | 功能模块     | 说明                   |
 | ------ | ------------ | ---------------------- |
 | P0     | 项目管理     | 基础的项目 CRUD 操作   |
+| P0     | 项目分类管理 | 主项目支持分类归档     |
 | P0     | 子项目管理   | 子项目的创建和管理     |
 | P0     | 动态内容管理 | 灵活的内容类型配置     |
 | P0     | 时效性处理   | 自动计算和显示过期时间 |
+| P1     | 文档生成     | 支持展示开启文档的子项目 |
 | P1     | 移动端适配   | 响应式界面设计         |
 | P1     | 搜索和筛选   | 快速定位内容           |
 | P2     | 批量操作     | 提升操作效率           |
@@ -63,27 +65,50 @@
 
 #### 3.1.1 功能描述
 
-用户可以自定义创建、编辑、删除项目，每个项目作为独立的管理单元。
+用户可以自定义创建、编辑、删除项目，并将项目归类到不同的分类中，每个项目作为独立的管理单元。
 
 #### 3.1.2 功能详情
 
 - **创建项目**:
   - 输入项目名称（必填）
   - 输入项目描述（可选）
+  - 选择项目分类（必填，可在分类管理中维护）
   - 自动记录创建时间和更新时间
 - **项目列表**:
-  - 显示所有项目的卡片视图
-  - 显示项目名称、描述、子项目数量、最后更新时间
-  - 支持搜索功能
-- **编辑项目**: 修改项目名称和描述
+- 显示所有项目的卡片视图，可按分类分组或筛选
+- 显示项目名称、描述、所属分类、子项目数量、最后更新时间
+- 支持搜索与分类筛选功能
+- **编辑项目**: 修改项目名称、描述、所属分类
 - **删除项目**: 软删除，保留数据但不显示
 
-#### 3.1.3 技术实现要点
+#### 3.1.3 项目分类管理
+
+- **分类维护**:
+  - 支持创建、编辑、删除项目分类
+  - 每个分类包含名称、描述、排序权重、是否启用
+- **分类展示**:
+  - 项目列表按照分类分组展示
+  - 支持在筛选面板中按照分类快速筛选项目
+- **分类限制**:
+  - 删除分类前需要确保分类下项目已迁移或关闭
+
+#### 3.1.4 技术实现要点
 
 ```sql
 -- 项目表设计
+CREATE TABLE project_categories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    sort_order INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE projects (
     id SERIAL PRIMARY KEY,
+    category_id INTEGER NOT NULL REFERENCES project_categories(id),
     name VARCHAR(255) NOT NULL,
     description TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -104,9 +129,11 @@ CREATE TABLE projects (
   - 选择所属项目
   - 输入子项目名称和描述
   - 支持自定义排序
+  - 配置是否开启文档生成（开启后出现在文档页面）
 - **子项目列表**:
   - 按排序显示子项目
   - 显示内容数量和口令数量统计
+  - 显示文档生成状态
 - **排序管理**: 支持拖拽排序或手动设置序号
 
 #### 3.2.3 数据结构
@@ -118,9 +145,41 @@ CREATE TABLE sub_projects (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     sort_order INTEGER DEFAULT 0,
+    enable_documentation BOOLEAN DEFAULT false,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     is_active BOOLEAN DEFAULT true
+);
+```
+
+### 3.5 文档生成模块
+
+#### 3.5.1 功能描述
+
+系统提供统一的文档展示页面，仅展示开启“文档生成”开关的子项目，方便成员快速查阅项目内容摘要。
+
+#### 3.5.2 功能详情
+
+- **文档开关管理**:
+  - 子项目维护时可开启或关闭文档生成开关
+  - 支持批量开启/关闭文档生成
+- **文档展示页面**:
+  - 支持按照主项目分类、主项目、子项目三级结构展示
+  - 显示子项目基础信息、主要内容条目及口令摘要
+  - 支持关键字搜索与分类筛选
+- **生成规则**:
+  - 仅展示启用文档的子项目
+  - 文档内容自动同步最新的子项目内容及口令数据
+
+#### 3.5.3 数据结构
+
+```sql
+CREATE TABLE documentation_entries (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER NOT NULL REFERENCES projects(id),
+    sub_project_id INTEGER NOT NULL REFERENCES sub_projects(id),
+    snapshot JSONB NOT NULL,
+    generated_at TIMESTAMPTZ DEFAULT NOW()
 );
 ```
 
@@ -227,18 +286,33 @@ CREATE TABLE text_commands (
 ┌─────────────────────────────────┐
 │ 项目管理 [+新建项目]             │
 ├─────────────────────────────────┤
-│ [搜索框]                        │
+│ [搜索框] [分类筛选▼]             │
 ├─────────────────────────────────┤
 │ ┌──────────┐ ┌──────────┐      │
 │ │项目A     │ │项目B     │      │
-│ │描述...   │ │描述...   │      │
+│ │分类：A类 │ │分类：B类 │      │
 │ │5个子项目 │ │3个子项目 │      │
 │ │2小时前   │ │1天前     │      │
 │ └──────────┘ └──────────┘      │
 └─────────────────────────────────┘
 ```
 
-#### 4.2.2 子项目详情页面
+#### 4.2.2 项目分类管理页面
+
+```
+┌───────────────────────────────┐
+│ 项目分类管理 [+新建分类]        │
+├───────────────────────────────┤
+│ ┌────────────┐ ┌────────────┐ │
+│ │A类          │ │B类          │ │
+│ │描述...      │ │描述...      │ │
+│ │排序：1      │ │排序：2      │ │
+│ │[编辑][停用] │ │[编辑][停用] │ │
+│ └────────────┘ └────────────┘ │
+└───────────────────────────────┘
+```
+
+#### 4.2.3 子项目详情页面
 
 ```
 ┌─────────────────────────────────┐
@@ -252,8 +326,26 @@ CREATE TABLE text_commands (
 │ │ ├─ 短链接: xxx              │ │
 │ │ ├─ 团口令: xxx [🟢7天]      │ │
 │ │ ├─ 文字口令(3个) [🟡2天]    │ │
+│ │ ├─ 文档生成: 已开启         │ │
 │ │ └─ [编辑] [删除]            │ │
 │ └─────────────────────────────┘ │
+└─────────────────────────────────┘
+```
+
+#### 4.2.4 文档展示页面
+
+```
+┌─────────────────────────────────┐
+│ 文档中心 [搜索框] [分类筛选▼]    │
+├─────────────────────────────────┤
+│ 分类：A类                       │
+│   项目A                         │
+│     ┌─────────────────────────┐ │
+│     │ 子项目A1（文档已更新）   │ │
+│     │ - 短链接：xxx            │ │
+│     │ - 团口令：xxx [🟢7天]    │ │
+│     │ - 口令摘要：3条          │ │
+│     └─────────────────────────┘ │
 └─────────────────────────────────┘
 ```
 
@@ -292,22 +384,27 @@ src/
 ├── components/          # 可复用组件
 │   ├── ProjectCard.vue
 │   ├── SubProjectManager.vue
-│   └── ContentEditor.vue
+│   ├── ContentEditor.vue
+│   └── ProjectCategoryManager.vue
 ├── views/              # 页面组件
 │   ├── ProjectList.vue
-│   └── ProjectDetail.vue
+│   ├── ProjectDetail.vue
+│   └── DocumentationCenter.vue
 ├── stores/             # 状态管理
 │   ├── projects.ts
+│   ├── projectCategories.ts
 │   └── content.ts
 ├── composables/        # 组合式函数
 │   ├── useProjects.ts
+│   ├── useProjectCategories.ts
 │   └── useDateFormat.ts
 ├── utils/              # 工具函数
 │   ├── api.ts
 │   ├── date.ts
 │   └── validation.ts
 └── types/              # 类型定义
-    └── index.ts
+    ├── index.ts
+    └── project-category.ts
 ```
 
 ### 5.2 后端架构
@@ -343,6 +440,13 @@ backend/
 │   │   │   └── dto/
 │   │   │       ├── create-project.dto.ts
 │   │   │       └── update-project.dto.ts
+│   │   ├── project-categories/
+│   │   │   ├── project-categories.controller.ts
+│   │   │   ├── project-categories.service.ts
+│   │   │   ├── project-categories.module.ts
+│   │   │   └── dto/
+│   │   │       ├── create-category.dto.ts
+│   │   │       └── update-category.dto.ts
 │   │   ├── sub-projects/
 │   │   │   ├── sub-projects.controller.ts
 │   │   │   ├── sub-projects.service.ts
@@ -355,6 +459,12 @@ backend/
 │   │   │   ├── text-commands.controller.ts
 │   │   │   ├── text-commands.service.ts
 │   │   │   └── text-commands.module.ts
+│   │   ├── documentation/
+│   │   │   ├── documentation.controller.ts
+│   │   │   ├── documentation.service.ts
+│   │   │   ├── documentation.module.ts
+│   │   │   └── dto/
+│   │   │       └── generate-documentation.dto.ts
 │   │   └── content-types/
 │   │       ├── content-types.controller.ts
 │   │       ├── content-types.service.ts
@@ -393,15 +503,29 @@ backend/
 └── .dockerignore
 ```
 
-#### 5.2.2 API 设计原则
+#### 5.2.2 核心业务服务
+
+- **ProjectCategoriesService**: 负责分类的 CRUD、排序调整与状态切换，提供缓存支持以提升分类筛选响应速度。
+- **ProjectsService**: 在项目创建/更新时校验分类有效性，并在分类变更时触发相关子项目的缓存刷新。
+- **SubProjectsService**: 处理 `enable_documentation` 开关逻辑，变更后异步通知文档服务。
+- **DocumentationService**: 监听子项目内容及开关变更，生成文档快照并持久化，同时提供文档查询接口；支持手动触发与定时全量刷新。
+- **DocumentationScheduler**: 通过 NestJS Scheduler 定时扫描启用文档的子项目，确保文档快照与内容保持一致。
+
+#### 5.2.3 API 设计原则
 
 **RESTful API 设计**:
 
-- `GET /api/projects` - 获取项目列表
+- `GET /api/project-categories` - 获取项目分类列表
+- `POST /api/project-categories` - 创建项目分类
+- `PUT /api/project-categories/:id` - 更新项目分类
+- `PATCH /api/project-categories/:id/status` - 启用/停用分类
+- `GET /api/projects` - 获取项目列表（支持分类筛选）
 - `POST /api/projects` - 创建项目
 - `GET /api/projects/:id` - 获取项目详情
 - `PUT /api/projects/:id` - 更新项目
 - `DELETE /api/projects/:id` - 删除项目
+- `GET /api/documentation` - 获取开启文档的子项目文档
+- `POST /api/documentation/generate` - 手动触发文档生成（可选）
 
 **响应格式标准化**:
 
@@ -431,7 +555,7 @@ interface PaginatedResponse<T> {
 - HTTP 状态码标准化
 - 详细错误信息返回
 
-#### 5.2.3 数据库设计特点
+#### 5.2.4 数据库设计特点
 
 - **PostgreSQL**: 关系型数据库，支持复杂查询
 - **Prisma ORM**: 类型安全的数据库操作
@@ -453,34 +577,63 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Project {
-  id          Int      @id @default(autoincrement())
-  name        String   @db.VarChar(255)
+model ProjectCategory {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
   description String?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int       @default(0) @map("sort_order")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
+  projects    Project[]
+
+  @@map("project_categories")
+}
+
+model Project {
+  id          Int       @id @default(autoincrement())
+  categoryId  Int       @map("category_id")
+  name        String    @db.VarChar(255)
+  description String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  isActive    Boolean   @default(true) @map("is_active")
+
+  category    ProjectCategory @relation(fields: [categoryId], references: [id])
   subProjects SubProject[]
 
   @@map("projects")
 }
 
 model SubProject {
-  id          Int      @id @default(autoincrement())
-  projectId   Int      @map("project_id")
-  name        String   @db.VarChar(255)
-  description String?
-  sortOrder   Int      @default(0) @map("sort_order")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  isActive    Boolean  @default(true) @map("is_active")
+  id                   Int       @id @default(autoincrement())
+  projectId            Int       @map("project_id")
+  name                 String    @db.VarChar(255)
+  description          String?
+  sortOrder            Int       @default(0) @map("sort_order")
+  enableDocumentation  Boolean   @default(false) @map("enable_documentation")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+  isActive             Boolean   @default(true) @map("is_active")
 
-  project      Project         @relation(fields: [projectId], references: [id])
-  contents     SubProjectContent[]
-  textCommands TextCommand[]
+  project              Project               @relation(fields: [projectId], references: [id])
+  contents             SubProjectContent[]
+  textCommands         TextCommand[]
+  documentationEntries DocumentationEntry[]
 
   @@map("sub_projects")
+}
+
+model DocumentationEntry {
+  id            Int        @id @default(autoincrement())
+  subProjectId  Int        @map("sub_project_id")
+  snapshot      Json
+  generatedAt   DateTime   @default(now()) @map("generated_at")
+
+  subProject    SubProject @relation(fields: [subProjectId], references: [id])
+
+  @@map("documentation_entries")
 }
 ```
 

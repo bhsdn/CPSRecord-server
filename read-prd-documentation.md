@@ -12,6 +12,8 @@
 - 动态配置内容类型，适应不同推广场景
 - 自动化处理时效性内容，减少人工维护
 - 提供直观的移动端友好界面
+- 支持主项目分类管理，实现多维度归档与筛选
+- 提供按需生成的子项目文档中心，集中展示重点内容
 
 ### 1.3 技术架构选型
 
@@ -61,7 +63,8 @@ src/
 │   ├── project/            # 项目相关组件
 │   │   ├── ProjectCard.vue
 │   │   ├── ProjectForm.vue
-│   │   └── ProjectSearch.vue
+│   │   ├── ProjectSearch.vue
+│   │   └── ProjectCategorySelector.vue
 │   ├── subproject/         # 子项目组件
 │   │   ├── SubProjectList.vue
 │   │   ├── SubProjectForm.vue
@@ -70,23 +73,28 @@ src/
 │       ├── ContentEditor.vue
 │       ├── ContentTypeManager.vue
 │       ├── TextCommandList.vue
-│       └── ExpiryStatus.vue
+│       ├── ExpiryStatus.vue
+│       └── DocumentationToggle.vue
 ├── views/                  # 页面组件
 │   ├── ProjectList.vue
 │   ├── ProjectDetail.vue
 │   ├── SubProjectDetail.vue
-│   └── ContentManagement.vue
+│   ├── ContentManagement.vue
+│   ├── ProjectCategoryManagement.vue
+│   └── DocumentationCenter.vue
 ├── stores/                 # Pinia状态管理
 │   ├── projects.ts
 │   ├── subProjects.ts
 │   ├── contents.ts
-│   └── app.ts
+│   ├── projectCategories.ts
+│   └── documentation.ts
 ├── composables/            # 组合式函数
 │   ├── useProjects.ts
 │   ├── useSubProjects.ts
 │   ├── useContents.ts
 │   ├── useDateFormat.ts
-│   └── useResponsive.ts
+│   ├── useResponsive.ts
+│   └── useDocumentation.ts
 ├── utils/                  # 工具函数
 │   ├── api.ts
 │   ├── date.ts
@@ -95,6 +103,8 @@ src/
 ├── types/                  # TypeScript类型定义
 │   ├── project.ts
 │   ├── content.ts
+│   ├── documentation.ts
+│   ├── project-category.ts
 │   └── api.ts
 └── router/                 # 路由配置
     └── index.ts
@@ -104,11 +114,16 @@ src/
 
 ```typescript
 // types/project.ts
+import type { ProjectCategory } from "./project-category";
+
 export interface Project {
   id: number;
   name: string;
   description?: string;
+  categoryId: number;
+  category?: ProjectCategory;
   subProjectCount: number;
+  documentationCount: number;
   createdAt: string;
   updatedAt: string;
   isActive: boolean;
@@ -120,6 +135,8 @@ export interface SubProject {
   name: string;
   description?: string;
   sortOrder: number;
+  documentationEnabled: boolean;
+  lastDocumentationAt?: string;
   contents: SubProjectContent[];
   textCommands: TextCommand[];
   createdAt: string;
@@ -153,6 +170,29 @@ export interface TextCommand {
   expiryDate: string;
   expiryStatus: "safe" | "warning" | "danger";
 }
+
+// types/project-category.ts
+export interface ProjectCategory {
+  id: number;
+  name: string;
+  description?: string;
+  sortOrder: number;
+  isActive: boolean;
+  projectCount?: number;
+}
+
+// types/documentation.ts
+export interface DocumentationEntry {
+  id: number;
+  subProjectId: number;
+  subProjectName: string;
+  projectId: number;
+  projectName: string;
+  categoryId: number;
+  categoryName: string;
+  snapshot: Record<string, unknown>;
+  generatedAt: string;
+}
 ```
 
 ### 2.3 状态管理设计
@@ -167,22 +207,30 @@ export const useProjectsStore = defineStore("projects", () => {
   const projects = ref<Project[]>([]);
   const loading = ref(false);
   const searchQuery = ref("");
+  const selectedCategoryId = ref<number | null>(null);
 
   const filteredProjects = computed(() => {
-    if (!searchQuery.value) return projects.value;
-    return projects.value.filter(
-      (project) =>
+    return projects.value.filter((project) => {
+      const matchCategory =
+        selectedCategoryId.value === null ||
+        project.categoryId === selectedCategoryId.value;
+      if (!matchCategory) return false;
+      if (!searchQuery.value) return true;
+      return (
         project.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
         project.description
           ?.toLowerCase()
           .includes(searchQuery.value.toLowerCase())
-    );
+      );
+    });
   });
 
   const fetchProjects = async () => {
     loading.value = true;
     try {
-      const response = await api.get("/projects");
+      const response = await api.get("/projects", {
+        params: { categoryId: selectedCategoryId.value ?? undefined },
+      });
       projects.value = response.data;
     } catch (error) {
       ElMessage.error("获取项目列表失败");
@@ -235,11 +283,124 @@ export const useProjectsStore = defineStore("projects", () => {
     projects,
     loading,
     searchQuery,
+    selectedCategoryId,
     filteredProjects,
     fetchProjects,
     createProject,
     updateProject,
     deleteProject,
+    setCategory(categoryId: number | null) {
+      selectedCategoryId.value = categoryId;
+    },
+  };
+});
+```
+
+```typescript
+// stores/projectCategories.ts
+import { defineStore } from "pinia";
+import { ref } from "vue";
+import type { ProjectCategory } from "@/types/project-category";
+
+export const useProjectCategoriesStore = defineStore(
+  "projectCategories",
+  () => {
+    const categories = ref<ProjectCategory[]>([]);
+    const loading = ref(false);
+
+    const fetchCategories = async () => {
+      loading.value = true;
+      try {
+        const response = await api.get("/project-categories");
+        categories.value = response.data;
+      } catch (error) {
+        ElMessage.error("获取项目分类失败");
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const createCategory = async (
+      payload: Omit<ProjectCategory, "id" | "projectCount">
+    ) => {
+      const response = await api.post("/project-categories", payload);
+      categories.value.push(response.data);
+      ElMessage.success("分类创建成功");
+    };
+
+    const updateCategory = async (
+      id: number,
+      payload: Partial<ProjectCategory>
+    ) => {
+      const response = await api.put(`/project-categories/${id}`, payload);
+      const index = categories.value.findIndex((item) => item.id === id);
+      if (index !== -1) {
+        categories.value[index] = response.data;
+      }
+      ElMessage.success("分类更新成功");
+    };
+
+    const toggleCategoryStatus = async (id: number, isActive: boolean) => {
+      const response = await api.patch(
+        `/project-categories/${id}/status`,
+        { isActive }
+      );
+      const index = categories.value.findIndex((item) => item.id === id);
+      if (index !== -1) {
+        categories.value[index] = response.data;
+      }
+    };
+
+    return {
+      categories,
+      loading,
+      fetchCategories,
+      createCategory,
+      updateCategory,
+      toggleCategoryStatus,
+    };
+  }
+);
+```
+
+```typescript
+// stores/documentation.ts
+import { defineStore } from "pinia";
+import { ref } from "vue";
+import type { DocumentationEntry } from "@/types/documentation";
+
+export const useDocumentationStore = defineStore("documentation", () => {
+  const entries = ref<DocumentationEntry[]>([]);
+  const loading = ref(false);
+  const lastSyncedAt = ref<string | null>(null);
+
+  const fetchDocumentation = async (params?: {
+    categoryId?: number;
+    projectId?: number;
+    keyword?: string;
+  }) => {
+    loading.value = true;
+    try {
+      const response = await api.get("/documentation", { params });
+      entries.value = response.data.entries;
+      lastSyncedAt.value = response.data.generatedAt;
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  const regenerateDocumentation = async (subProjectIds?: number[]) => {
+    await api.post("/documentation/generate", { subProjectIds });
+    await fetchDocumentation();
+    ElMessage.success("文档生成任务已提交");
+  };
+
+  return {
+    entries,
+    loading,
+    lastSyncedAt,
+    fetchDocumentation,
+    regenerateDocumentation,
   };
 });
 ```
@@ -324,6 +485,36 @@ export function useResponsive() {
     isDesktop,
   };
 }
+
+// composables/useDocumentation.ts
+import { computed } from "vue";
+import { storeToRefs } from "pinia";
+import { useDocumentationStore } from "@/stores/documentation";
+import type { DocumentationEntry } from "@/types/documentation";
+
+export function useDocumentation() {
+  const documentationStore = useDocumentationStore();
+  const { entries, loading, lastSyncedAt } = storeToRefs(documentationStore);
+
+  const groupedByCategory = computed(() => {
+    return entries.value.reduce((acc, entry) => {
+      if (!acc[entry.categoryName]) {
+        acc[entry.categoryName] = [];
+      }
+      acc[entry.categoryName].push(entry);
+      return acc;
+    }, {} as Record<string, DocumentationEntry[]>);
+  });
+
+  return {
+    entries,
+    loading,
+    lastSyncedAt,
+    groupedByCategory,
+    fetchDocumentation: documentationStore.fetchDocumentation,
+    regenerateDocumentation: documentationStore.regenerateDocumentation,
+  };
+}
 ```
 
 ### 2.5 路由设计
@@ -364,11 +555,27 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: "/project-categories",
+    name: "ProjectCategoryManagement",
+    component: () => import("@/views/ProjectCategoryManagement.vue"),
+    meta: {
+      title: "项目分类管理",
+    },
+  },
+  {
     path: "/content-types",
     name: "ContentManagement",
     component: () => import("@/views/ContentManagement.vue"),
     meta: {
       title: "内容类型管理",
+    },
+  },
+  {
+    path: "/documentation",
+    name: "DocumentationCenter",
+    component: () => import("@/views/DocumentationCenter.vue"),
+    meta: {
+      title: "文档中心",
     },
   },
 ];
@@ -403,7 +610,12 @@ export default router;
   >
     <template #header>
       <div class="flex justify-between items-center">
-        <h3 class="text-lg font-semibold truncate">{{ project.name }}</h3>
+        <div class="flex items-center gap-2">
+          <el-tag size="small" type="info" v-if="project.category">
+            {{ project.category.name }}
+          </el-tag>
+          <h3 class="text-lg font-semibold truncate">{{ project.name }}</h3>
+        </div>
         <el-dropdown @command="handleCommand" trigger="click" @click.stop>
           <el-button type="text" size="small">
             <el-icon><MoreFilled /></el-icon>
@@ -424,7 +636,10 @@ export default router;
       </p>
 
       <div class="flex justify-between text-sm text-gray-500">
-        <span>{{ project.subProjectCount }} 个子项目</span>
+        <span>
+          {{ project.subProjectCount }} 个子项目 ·
+          {{ project.documentationCount }} 个文档
+        </span>
         <span>{{ formatDate(project.updatedAt) }}</span>
       </div>
     </div>
@@ -729,6 +944,200 @@ const handleCancel = () => {
 </script>
 ```
 
+### 3.4 文档开关组件
+
+```vue
+<!-- components/content/DocumentationToggle.vue -->
+<template>
+  <el-form-item label="生成文档">
+    <el-switch
+      v-model="modelValue"
+      :active-text="modelValue ? '文档已开启' : '文档已关闭'"
+      inline-prompt
+      @change="handleToggle"
+    />
+    <p class="text-xs text-gray-500 mt-1">
+      开启后该子项目会出现在统一文档中心，并实时同步内容变更。
+    </p>
+  </el-form-item>
+</template>
+
+<script setup lang="ts">
+interface Props {
+  modelValue: boolean;
+}
+
+defineProps<Props>();
+const emit = defineEmits<["update:modelValue", "change"]>();
+
+const handleToggle = (value: boolean) => {
+  emit("update:modelValue", value);
+  emit("change", value);
+};
+</script>
+```
+
+### 3.5 文档中心页面
+
+```vue
+<!-- views/DocumentationCenter.vue -->
+<template>
+  <div class="documentation-center space-y-6">
+    <el-card shadow="never">
+      <div class="flex flex-wrap items-center gap-4">
+        <el-select
+          v-model="filters.categoryId"
+          placeholder="选择分类"
+          clearable
+          class="w-56"
+        >
+          <el-option
+            v-for="category in categories"
+            :key="category.id"
+            :label="category.name"
+            :value="category.id"
+          />
+        </el-select>
+        <el-select
+          v-model="filters.projectId"
+          placeholder="选择项目"
+          clearable
+          class="w-56"
+        >
+          <el-option
+            v-for="project in projects"
+            :key="project.id"
+            :label="project.name"
+            :value="project.id"
+          />
+        </el-select>
+        <el-input
+          v-model="filters.keyword"
+          placeholder="搜索子项目或关键字"
+          clearable
+          class="w-72"
+          @keyup.enter="handleSearch"
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+        </el-input>
+        <el-button type="primary" @click="handleSearch">查询</el-button>
+        <el-button @click="handleRegenerate" :loading="regenerating">
+          重新生成文档
+        </el-button>
+        <span class="text-xs text-gray-500">
+          最近同步时间：{{ lastSyncedAt || "暂无" }}
+        </span>
+      </div>
+    </el-card>
+
+    <el-empty v-if="!entries.length && !loading" description="暂无文档数据" />
+
+    <el-skeleton v-else-if="loading" :rows="6" animated />
+
+    <div v-else class="space-y-6">
+      <el-card
+        v-for="(items, categoryName) in groupedByCategory"
+        :key="categoryName"
+        shadow="hover"
+      >
+        <template #header>
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold">
+              {{ categoryName || "未分类" }}
+            </h3>
+            <span class="text-sm text-gray-500">
+              共 {{ items.length }} 个子项目
+            </span>
+          </div>
+        </template>
+
+        <el-timeline>
+          <el-timeline-item
+            v-for="entry in items"
+            :key="entry.id"
+            :timestamp="formatDate(entry.generatedAt)"
+            placement="top"
+          >
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h4 class="text-base font-medium">{{ entry.subProjectName }}</h4>
+                  <p class="text-xs text-gray-500">
+                    项目：{{ entry.projectName }}
+                  </p>
+                </div>
+                <el-tag type="success" size="small">文档已生成</el-tag>
+              </div>
+              <el-descriptions :column="1" border>
+                <el-descriptions-item
+                  v-for="(value, key) in entry.snapshot"
+                  :key="key"
+                  :label="key"
+                >
+                  {{ value }}
+                </el-descriptions-item>
+              </el-descriptions>
+            </div>
+          </el-timeline-item>
+        </el-timeline>
+      </el-card>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed, reactive, ref, onMounted } from "vue";
+import { useDocumentation } from "@/composables/useDocumentation";
+import { useProjectsStore } from "@/stores/projects";
+import { useProjectCategoriesStore } from "@/stores/projectCategories";
+
+const projectsStore = useProjectsStore();
+const projectCategoriesStore = useProjectCategoriesStore();
+const { entries, loading, lastSyncedAt, groupedByCategory, fetchDocumentation, regenerateDocumentation } =
+  useDocumentation();
+
+const filters = reactive({
+  categoryId: undefined as number | undefined,
+  projectId: undefined as number | undefined,
+  keyword: "",
+});
+
+const regenerating = ref(false);
+
+const handleSearch = () => {
+  fetchDocumentation({
+    categoryId: filters.categoryId,
+    projectId: filters.projectId,
+    keyword: filters.keyword || undefined,
+  });
+};
+
+const handleRegenerate = async () => {
+  regenerating.value = true;
+  try {
+    await regenerateDocumentation();
+  } finally {
+    regenerating.value = false;
+  }
+};
+
+const formatDate = (date: string) => new Date(date).toLocaleString();
+
+onMounted(async () => {
+  await Promise.all([
+    projectsStore.fetchProjects(),
+    projectCategoriesStore.fetchCategories(),
+    fetchDocumentation(),
+  ]);
+});
+
+const projects = computed(() => projectsStore.projects);
+const categories = computed(() => projectCategoriesStore.categories);
+</script>
+```
+
 ## 4. 后端架构设计
 
 ### 4.1 NestJS 项目结构
@@ -749,6 +1158,14 @@ backend/
 │   │   │       ├── create-project.dto.ts
 │   │   │       ├── update-project.dto.ts
 │   │   │       └── query-project.dto.ts
+│   │   ├── project-categories/
+│   │   │   ├── project-categories.controller.ts
+│   │   │   ├── project-categories.service.ts
+│   │   │   ├── project-categories.module.ts
+│   │   │   └── dto/
+│   │   │       ├── create-category.dto.ts
+│   │   │       ├── update-category.dto.ts
+│   │   │       └── reorder-category.dto.ts
 │   │   ├── sub-projects/
 │   │   │   ├── sub-projects.controller.ts
 │   │   │   ├── sub-projects.service.ts
@@ -764,6 +1181,13 @@ backend/
 │   │   │   ├── text-commands.service.ts
 │   │   │   ├── text-commands.module.ts
 │   │   │   └── dto/
+│   │   ├── documentation/
+│   │   │   ├── documentation.controller.ts
+│   │   │   ├── documentation.service.ts
+│   │   │   ├── documentation.module.ts
+│   │   │   └── dto/
+│   │   │       ├── generate-documentation.dto.ts
+│   │   │       └── query-documentation.dto.ts
 │   │   └── content-types/
 │   │       ├── content-types.controller.ts
 │   │       ├── content-types.service.ts
@@ -814,35 +1238,70 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Project {
-  id          Int      @id @default(autoincrement())
-  name        String   @db.VarChar(255)
+model ProjectCategory {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
   description String?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int       @default(0) @map("sort_order")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
+  projects    Project[]
+
+  @@map("project_categories")
+}
+
+model Project {
+  id          Int       @id @default(autoincrement())
+  categoryId  Int       @map("category_id")
+  name        String    @db.VarChar(255)
+  description String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  isActive    Boolean   @default(true) @map("is_active")
+
+  category    ProjectCategory @relation(fields: [categoryId], references: [id])
   subProjects SubProject[]
+  documentationEntries DocumentationEntry[]
 
   @@map("projects")
+  @@index([categoryId])
 }
 
 model SubProject {
-  id          Int      @id @default(autoincrement())
-  projectId   Int      @map("project_id")
-  name        String   @db.VarChar(255)
-  description String?
-  sortOrder   Int      @default(0) @map("sort_order")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  isActive    Boolean  @default(true) @map("is_active")
+  id                   Int        @id @default(autoincrement())
+  projectId            Int        @map("project_id")
+  name                 String     @db.VarChar(255)
+  description          String?
+  sortOrder            Int        @default(0) @map("sort_order")
+  enableDocumentation  Boolean    @default(false) @map("enable_documentation")
+  createdAt            DateTime   @default(now()) @map("created_at")
+  updatedAt            DateTime   @updatedAt @map("updated_at")
+  isActive             Boolean    @default(true) @map("is_active")
 
-  project      Project               @relation(fields: [projectId], references: [id])
-  contents     SubProjectContent[]
-  textCommands TextCommand[]
+  project              Project               @relation(fields: [projectId], references: [id])
+  contents             SubProjectContent[]
+  textCommands         TextCommand[]
+  documentationEntries DocumentationEntry[]
 
   @@map("sub_projects")
   @@index([projectId])
+}
+
+model DocumentationEntry {
+  id            Int        @id @default(autoincrement())
+  projectId     Int        @map("project_id")
+  subProjectId  Int        @map("sub_project_id")
+  snapshot      Json
+  generatedAt   DateTime   @default(now()) @map("generated_at")
+
+  project       Project    @relation(fields: [projectId], references: [id])
+  subProject    SubProject @relation(fields: [subProjectId], references: [id])
+
+  @@map("documentation_entries")
+  @@index([projectId])
+  @@index([subProjectId])
 }
 
 model ContentType {
@@ -944,6 +1403,12 @@ export class ProjectsController {
     type: String,
     description: "搜索关键词",
   })
+  @ApiQuery({
+    name: "categoryId",
+    required: false,
+    type: Number,
+    description: "按分类筛选",
+  })
   @ApiResponseWrapper({
     status: HttpStatus.OK,
     description: "获取项目列表成功",
@@ -1009,6 +1474,78 @@ export class ProjectsController {
 }
 ```
 
+```typescript
+// modules/project-categories/project-categories.controller.ts
+@ApiTags("项目分类")
+@Controller("api/project-categories")
+@UseInterceptors(ResponseInterceptor)
+export class ProjectCategoriesController {
+  constructor(
+    private readonly projectCategoriesService: ProjectCategoriesService
+  ) {}
+
+  @Get()
+  @ApiOperation({ summary: "获取分类列表" })
+  findAll() {
+    return this.projectCategoriesService.findAll();
+  }
+
+  @Post()
+  @ApiOperation({ summary: "创建分类" })
+  create(@Body() dto: CreateProjectCategoryDto) {
+    return this.projectCategoriesService.create(dto);
+  }
+
+  @Put(":id")
+  @ApiOperation({ summary: "更新分类" })
+  update(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() dto: UpdateProjectCategoryDto
+  ) {
+    return this.projectCategoriesService.update(id, dto);
+  }
+
+  @Patch(":id/status")
+  @ApiOperation({ summary: "切换分类启用状态" })
+  toggleStatus(
+    @Param("id", ParseIntPipe) id: number,
+    @Body("isActive") isActive: boolean
+  ) {
+    return this.projectCategoriesService.toggleStatus(id, isActive);
+  }
+
+  @Post("/reorder")
+  @ApiOperation({ summary: "批量调整分类排序" })
+  reorder(@Body() dto: ReorderProjectCategoryDto) {
+    return this.projectCategoriesService.reorder(dto);
+  }
+}
+```
+
+```typescript
+// modules/documentation/documentation.controller.ts
+@ApiTags("文档中心")
+@Controller("api/documentation")
+@UseInterceptors(ResponseInterceptor)
+export class DocumentationController {
+  constructor(
+    private readonly documentationService: DocumentationService
+  ) {}
+
+  @Get()
+  @ApiOperation({ summary: "查询文档" })
+  list(@Query() query: QueryDocumentationDto) {
+    return this.documentationService.list(query);
+  }
+
+  @Post("/generate")
+  @ApiOperation({ summary: "触发文档生成" })
+  generate(@Body() dto: GenerateDocumentationDto) {
+    return this.documentationService.generate(dto);
+  }
+}
+```
+
 ### 4.4 业务服务设计
 
 ```typescript
@@ -1023,7 +1560,7 @@ export class ProjectsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(query: QueryProjectDto) {
-    const { page = 1, limit = 10, search } = query;
+    const { page = 1, limit = 10, search, categoryId } = query;
     const skip = (page - 1) * limit;
 
     // 构建查询条件
@@ -1035,6 +1572,7 @@ export class ProjectsService {
           { description: { contains: search, mode: "insensitive" } },
         ],
       }),
+      ...(categoryId && { categoryId }),
     };
 
     // 并行查询数据和总数
@@ -1045,8 +1583,12 @@ export class ProjectsService {
         take: limit,
         orderBy: { updatedAt: "desc" },
         include: {
+          category: true,
           _count: {
-            select: { subProjects: { where: { isActive: true } } },
+            select: {
+              subProjects: { where: { isActive: true } },
+              documentationEntries: true,
+            },
           },
         },
       }),
@@ -1057,6 +1599,7 @@ export class ProjectsService {
     const formattedProjects = projects.map((project) => ({
       ...project,
       subProjectCount: project._count.subProjects,
+      documentationCount: project._count.documentationEntries,
     }));
 
     return {
@@ -1074,6 +1617,7 @@ export class ProjectsService {
     const project = await this.prisma.project.findFirst({
       where: { id, isActive: true },
       include: {
+        category: true,
         subProjects: {
           where: { isActive: true },
           orderBy: { sortOrder: "asc" },
@@ -1083,6 +1627,10 @@ export class ProjectsService {
                 contents: { where: { isActive: true } },
                 textCommands: { where: { isActive: true } },
               },
+            },
+            documentationEntries: {
+              orderBy: { generatedAt: "desc" },
+              take: 1,
             },
           },
         },
@@ -1101,6 +1649,11 @@ export class ProjectsService {
       data: {
         name: createProjectDto.name,
         description: createProjectDto.description,
+        categoryId: createProjectDto.categoryId,
+      },
+      include: {
+        category: true,
+        _count: { select: { subProjects: true, documentationEntries: true } },
       },
     });
 
@@ -1116,6 +1669,11 @@ export class ProjectsService {
       data: {
         name: updateProjectDto.name,
         description: updateProjectDto.description,
+        categoryId: updateProjectDto.categoryId,
+      },
+      include: {
+        category: true,
+        _count: { select: { subProjects: true, documentationEntries: true } },
       },
     });
 
@@ -1132,6 +1690,10 @@ export class ProjectsService {
       this.prisma.subProjectContent.updateMany({
         where: { subProject: { projectId: id } },
         data: { isActive: false },
+      }),
+      // 软删除文档快照
+      this.prisma.documentationEntry.deleteMany({
+        where: { subProject: { projectId: id } },
       }),
       // 软删除子项目的文字口令
       this.prisma.textCommand.updateMany({
@@ -1169,6 +1731,10 @@ export class ProjectsService {
           where: { isActive: true },
           orderBy: { createdAt: "desc" },
         },
+        documentationEntries: {
+          orderBy: { generatedAt: "desc" },
+          take: 1,
+        },
       },
     });
 
@@ -1177,12 +1743,26 @@ export class ProjectsService {
 }
 ```
 
+**ProjectCategoriesService 核心逻辑**
+
+- 提供分类的 CRUD 能力，并在排序调整时批量更新 `sortOrder`。
+- 在分类停用时校验是否仍有关联项目，必要时阻止操作并返回提示。
+- 使用缓存（如 Redis）存储分类列表，加快前端筛选响应。
+
+**DocumentationService 核心逻辑**
+
+- 根据子项目的 `enableDocumentation` 状态选择需要生成的文档，并聚合内容与口令。
+- 支持手动触发和定时任务两种方式生成文档快照，生成结果写入 `documentation_entries`。
+- 提供查询接口，支持按分类、项目、关键词过滤，并返回最新快照时间。
+- 通过事件发布（如 `EventEmitter2`）与子项目服务解耦，监听子项目内容变更后自动刷新文档。
+
 ### 4.5 DTO 数据传输对象
 
 ```typescript
 // modules/projects/dto/create-project.dto.ts
 import { ApiProperty } from "@nestjs/swagger";
-import { IsString, IsOptional, Length } from "class-validator";
+import { IsString, IsOptional, Length, IsInt, Min } from "class-validator";
+import { Type } from "class-transformer";
 
 export class CreateProjectDto {
   @ApiProperty({ description: "项目名称", example: "淘宝CPS推广" })
@@ -1199,6 +1779,12 @@ export class CreateProjectDto {
   @IsString({ message: "项目描述必须是字符串" })
   @Length(0, 1000, { message: "项目描述长度不能超过1000个字符" })
   description?: string;
+
+  @ApiProperty({ description: "项目分类ID", example: 1 })
+  @Type(() => Number)
+  @IsInt({ message: "分类ID必须是整数" })
+  @Min(1, { message: "分类ID必须大于0" })
+  categoryId: number;
 }
 
 // modules/projects/dto/update-project.dto.ts
@@ -1232,6 +1818,108 @@ export class QueryProjectDto {
   @IsOptional()
   @IsString({ message: "搜索关键词必须是字符串" })
   search?: string;
+
+  @ApiProperty({ description: "分类筛选", required: false })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: "分类ID必须是整数" })
+  @Min(1, { message: "分类ID必须大于0" })
+  categoryId?: number;
+}
+
+// modules/project-categories/dto/create-category.dto.ts
+import { ApiProperty } from "@nestjs/swagger";
+import { IsString, Length, IsOptional, IsInt, Min } from "class-validator";
+
+export class CreateProjectCategoryDto {
+  @ApiProperty({ description: "分类名称", example: "营销活动" })
+  @IsString()
+  @Length(1, 100)
+  name: string;
+
+  @ApiProperty({ description: "分类描述", required: false })
+  @IsOptional()
+  @IsString()
+  @Length(0, 500)
+  description?: string;
+
+  @ApiProperty({ description: "排序权重", example: 1 })
+  @IsInt()
+  @Min(0)
+  sortOrder: number;
+}
+
+// modules/project-categories/dto/update-category.dto.ts
+import { PartialType } from "@nestjs/swagger";
+
+export class UpdateProjectCategoryDto extends PartialType(
+  CreateProjectCategoryDto
+) {}
+
+// modules/project-categories/dto/reorder-category.dto.ts
+import { ApiProperty } from "@nestjs/swagger";
+import { IsArray, ArrayNotEmpty, ValidateNested } from "class-validator";
+import { Type } from "class-transformer";
+
+class CategoryOrderItem {
+  @ApiProperty({ description: "分类ID" })
+  @IsInt()
+  @Min(1)
+  id: number;
+
+  @ApiProperty({ description: "新的排序值" })
+  @IsInt()
+  @Min(0)
+  sortOrder: number;
+}
+
+export class ReorderProjectCategoryDto {
+  @ApiProperty({ description: "分类排序列表" })
+  @IsArray()
+  @ArrayNotEmpty()
+  @ValidateNested({ each: true })
+  @Type(() => CategoryOrderItem)
+  items: CategoryOrderItem[];
+}
+
+// modules/documentation/dto/generate-documentation.dto.ts
+import { ApiPropertyOptional } from "@nestjs/swagger";
+import { IsArray, IsOptional, ArrayNotEmpty, IsInt, Min } from "class-validator";
+
+export class GenerateDocumentationDto {
+  @ApiPropertyOptional({ description: "需要重新生成的子项目ID列表" })
+  @IsOptional()
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsInt({ each: true })
+  @Min(1, { each: true })
+  subProjectIds?: number[];
+}
+
+// modules/documentation/dto/query-documentation.dto.ts
+import { ApiPropertyOptional } from "@nestjs/swagger";
+import { IsOptional, IsInt, Min, IsString } from "class-validator";
+import { Type } from "class-transformer";
+
+export class QueryDocumentationDto {
+  @ApiPropertyOptional({ description: "分类ID" })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  categoryId?: number;
+
+  @ApiPropertyOptional({ description: "项目ID" })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  projectId?: number;
+
+  @ApiPropertyOptional({ description: "关键词" })
+  @IsOptional()
+  @IsString()
+  keyword?: string;
 }
 ```
 
@@ -1276,12 +1964,19 @@ CREATE INDEX idx_projects_name_search ON projects USING gin(name gin_trgm_ops);
 -- 子项目查询优化
 CREATE INDEX idx_subprojects_project_sort ON sub_projects(project_id, sort_order) WHERE is_active = true;
 
+-- 分类查询优化
+CREATE INDEX idx_project_categories_active ON project_categories(is_active, sort_order);
+
 -- 内容查询优化
 CREATE INDEX idx_contents_subproject_active ON sub_project_contents(sub_project_id) WHERE is_active = true;
 CREATE INDEX idx_contents_expiry_status ON sub_project_contents(expiry_date) WHERE expiry_date IS NOT NULL;
 
 -- 文字口令查询优化
 CREATE INDEX idx_commands_subproject_expiry ON text_commands(sub_project_id, expiry_date) WHERE is_active = true;
+
+-- 文档查询优化
+CREATE INDEX idx_documentation_subproject ON documentation_entries(sub_project_id, generated_at DESC);
+CREATE INDEX idx_documentation_project ON documentation_entries(project_id);
 
 -- 启用 pg_trgm 扩展支持模糊搜索
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
