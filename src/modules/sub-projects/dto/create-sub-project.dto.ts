@@ -1,6 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Length, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsInt,
+  IsOptional,
+  IsString,
+  Length,
+  Min,
+} from 'class-validator';
 
 export class CreateSubProjectDto {
   @ApiProperty({ description: '所属项目ID', example: 1 })
@@ -25,4 +32,14 @@ export class CreateSubProjectDto {
   @Type(() => Number)
   @IsInt({ message: '排序序号必须是整数' })
   sortOrder?: number;
+
+  @ApiProperty({
+    description: '是否开启文档生成',
+    required: false,
+    example: true,
+  })
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean({ message: '是否开启文档生成必须是布尔值' })
+  documentationEnabled?: boolean;
 }

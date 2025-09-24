@@ -9,15 +9,59 @@ async function main() {
     return now;
   };
 
+  const ecommerceCategory = await prisma.projectCategory.upsert({
+    where: { name: '电商推广' },
+    update: {
+      description: '面向电商渠道的项目分类',
+      sortOrder: 1,
+      isActive: true,
+    },
+    create: {
+      name: '电商推广',
+      description: '面向电商渠道的项目分类',
+      sortOrder: 1,
+    },
+  });
+
+  const socialCategory = await prisma.projectCategory.upsert({
+    where: { name: '内容种草' },
+    update: {
+      description: '达人种草及内容分发类项目',
+      sortOrder: 2,
+      isActive: true,
+    },
+    create: {
+      name: '内容种草',
+      description: '达人种草及内容分发类项目',
+      sortOrder: 2,
+    },
+  });
+
   const project = await prisma.project.upsert({
     where: { id: 1 },
     update: {
       name: '默认 CPS 推广项目',
       description: '包含多个示例子项目与内容，帮助你快速体验功能',
+      category: { connect: { id: ecommerceCategory.id } },
     },
     create: {
       name: '默认 CPS 推广项目',
       description: '包含多个示例子项目与内容，帮助你快速体验功能',
+      category: { connect: { id: ecommerceCategory.id } },
+    },
+  });
+
+  await prisma.project.upsert({
+    where: { id: 2 },
+    update: {
+      name: '达人内容种草项目',
+      description: '面向内容种草场景的示例项目',
+      category: { connect: { id: socialCategory.id } },
+    },
+    create: {
+      name: '达人内容种草项目',
+      description: '面向内容种草场景的示例项目',
+      category: { connect: { id: socialCategory.id } },
     },
   });
 
@@ -26,12 +70,14 @@ async function main() {
     update: {
       name: '夏季爆款商品',
       description: '主打夏日清凉商品的推广集合',
+      documentationEnabled: true,
     },
     create: {
       projectId: project.id,
       name: '夏季爆款商品',
       description: '主打夏日清凉商品的推广集合',
       sortOrder: 1,
+      documentationEnabled: true,
     },
   });
 

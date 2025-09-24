@@ -24,9 +24,29 @@ export class SubProjectsController {
 
   @Get()
   @ApiOperation({ summary: '获取子项目列表' })
-  @ApiQuery({ name: 'projectId', required: false, type: Number, description: '项目ID' })
-  @ApiQuery({ name: 'search', required: false, type: String, description: '搜索关键词' })
-  @ApiResponseWrapper({ status: 200, description: '获取子项目列表成功', dataType: 'array' })
+  @ApiQuery({
+    name: 'projectId',
+    required: false,
+    type: Number,
+    description: '项目ID',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    description: '搜索关键词',
+  })
+  @ApiQuery({
+    name: 'documentationEnabled',
+    required: false,
+    type: Boolean,
+    description: '是否开启文档生成',
+  })
+  @ApiResponseWrapper({
+    status: 200,
+    description: '获取子项目列表成功',
+    dataType: 'array',
+  })
   async findAll(@Query() query: QuerySubProjectDto) {
     return this.subProjectsService.findAll(query);
   }

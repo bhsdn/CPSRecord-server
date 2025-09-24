@@ -13,12 +13,13 @@ export class SubProjectsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(query: QuerySubProjectDto) {
-    const { projectId, search } = query;
+    const { projectId, search, documentationEnabled } = query;
 
     // 支持按照项目和关键字过滤
     const where: Prisma.SubProjectWhereInput = {
       isActive: true,
       ...(projectId ? { projectId } : {}),
+      ...(documentationEnabled !== undefined ? { documentationEnabled } : {}),
       ...(search
         ? {
             OR: [
@@ -33,9 +34,12 @@ export class SubProjectsService {
       where,
       orderBy: { sortOrder: 'asc' },
       include: {
-        project: true,
+        project: { include: { category: true } },
         contents: { where: { isActive: true }, include: { contentType: true } },
-        textCommands: { where: { isActive: true }, orderBy: { createdAt: 'desc' } },
+        textCommands: {
+          where: { isActive: true },
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
 
@@ -46,9 +50,12 @@ export class SubProjectsService {
     const subProject = await this.prisma.subProject.findFirst({
       where: { id, isActive: true },
       include: {
-        project: true,
+        project: { include: { category: true } },
         contents: { where: { isActive: true }, include: { contentType: true } },
-        textCommands: { where: { isActive: true }, orderBy: { createdAt: 'desc' } },
+        textCommands: {
+          where: { isActive: true },
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
 
@@ -62,12 +69,13 @@ export class SubProjectsService {
   async create(dto: CreateSubProjectDto) {
     await this.ensureProjectExists(dto.projectId);
 
-    const { projectId, sortOrder, ...rest } = dto;
+    const { projectId, sortOrder, documentationEnabled, ...rest } = dto;
     const subProject = await this.prisma.subProject.create({
       data: {
         ...rest,
         project: { connect: { id: projectId } },
         sortOrder: sortOrder ?? (await this.getNextSortOrder(projectId)),
+        documentationEnabled: documentationEnabled ?? false,
       },
     });
 
@@ -83,6 +91,8 @@ export class SubProjectsService {
         name: dto.name ?? subProject.name,
         description: dto.description ?? subProject.description,
         sortOrder: dto.sortOrder ?? subProject.sortOrder,
+        documentationEnabled:
+          dto.documentationEnabled ?? subProject.documentationEnabled,
       },
     });
 
@@ -199,10 +209,23 @@ export class SubProjectsService {
       createdAt: subProject.createdAt,
       updatedAt: subProject.updatedAt,
       project: subProject.project
-        ? { id: subProject.project.id, name: subProject.project.name }
+        ? {
+            id: subProject.project.id,
+            name: subProject.project.name,
+            category: subProject.project.category
+              ? {
+                  id: subProject.project.category.id,
+                  name: subProject.project.category.name,
+                  description: subProject.project.category.description ?? null,
+                  sortOrder: subProject.project.category.sortOrder,
+                  isActive: subProject.project.category.isActive,
+                }
+              : undefined,
+          }
         : undefined,
       contentCount: contents?.length ?? 0,
       textCommandCount: textCommands?.length ?? 0,
+      documentationEnabled: subProject.documentationEnabled,
       contents,
       textCommands,
     };

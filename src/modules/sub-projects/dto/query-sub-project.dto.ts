@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class QuerySubProjectDto {
   @ApiProperty({ description: '所属项目ID', example: 1, required: false })
@@ -14,4 +14,14 @@ export class QuerySubProjectDto {
   @IsOptional()
   @IsString({ message: '搜索关键词必须是字符串' })
   search?: string;
+
+  @ApiProperty({
+    description: '是否开启文档生成',
+    required: false,
+    example: true,
+  })
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean({ message: '是否开启文档生成必须是布尔值' })
+  documentationEnabled?: boolean;
 }

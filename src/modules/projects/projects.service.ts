@@ -13,11 +13,12 @@ export class ProjectsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(query: QueryProjectDto) {
-    const { page = 1, limit = 10, search } = query;
+    const { page = 1, limit = 10, search, categoryId } = query;
 
     // 组合分页 + 搜索条件，仅返回未删除的项目
     const where: Prisma.ProjectWhereInput = {
       isActive: true,
+      ...(categoryId ? { categoryId } : {}),
       ...(search
         ? {
             OR: [
@@ -37,9 +38,10 @@ export class ProjectsService {
         skip: (page - 1) * limit,
         take: limit,
         include: {
+          category: true,
           subProjects: {
             where: { isActive: true },
-            select: { id: true },
+            select: { id: true, documentationEnabled: true },
           },
         },
       }),
@@ -48,11 +50,16 @@ export class ProjectsService {
     // 返回给前端的字段做了一层整理，避免暴露无用信息
     const projects = items.map((project) => ({
       id: project.id,
+      categoryId: project.categoryId,
+      category: this.mapCategory(project.category),
       name: project.name,
       description: project.description,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
       subProjectCount: project.subProjects.length,
+      documentationEnabledCount: project.subProjects.filter(
+        (item) => item.documentationEnabled,
+      ).length,
     }));
 
     return buildPaginationResponse(projects, total, page, limit);
@@ -62,10 +69,12 @@ export class ProjectsService {
     const project = await this.prisma.project.findFirst({
       where: { id, isActive: true },
       include: {
+        category: true,
         subProjects: {
           where: { isActive: true },
           orderBy: { sortOrder: 'asc' },
           include: {
+            project: { include: { category: true } },
             contents: {
               where: { isActive: true },
               include: { contentType: true },
@@ -86,25 +95,70 @@ export class ProjectsService {
     // 聚合子项目、内容、口令等信息，方便前端一次性渲染
     return {
       id: project.id,
+      categoryId: project.categoryId,
+      category: this.mapCategory(project.category),
       name: project.name,
       description: project.description,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
-      subProjects: project.subProjects.map((subProject) => this.mapSubProject(subProject)),
+      subProjects: project.subProjects.map((subProject) =>
+        this.mapSubProject(subProject),
+      ),
     };
   }
 
   async create(createProjectDto: CreateProjectDto) {
-    return this.prisma.project.create({ data: createProjectDto });
+    await this.ensureCategoryExists(createProjectDto.categoryId);
+
+    const { categoryId, ...rest } = createProjectDto;
+    const project = await this.prisma.project.create({
+      data: {
+        ...rest,
+        category: { connect: { id: categoryId } },
+      },
+      include: { category: true },
+    });
+
+    return {
+      id: project.id,
+      categoryId: project.categoryId,
+      category: this.mapCategory(project.category),
+      name: project.name,
+      description: project.description,
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
+    };
   }
 
   async update(id: number, updateProjectDto: UpdateProjectDto) {
     await this.ensureExists(id);
 
-    return this.prisma.project.update({
+    if (updateProjectDto.categoryId !== undefined) {
+      await this.ensureCategoryExists(updateProjectDto.categoryId);
+    }
+
+    const { categoryId, ...rest } = updateProjectDto;
+
+    const project = await this.prisma.project.update({
       where: { id },
-      data: updateProjectDto,
+      data: {
+        ...rest,
+        ...(categoryId !== undefined
+          ? { category: { connect: { id: categoryId } } }
+          : {}),
+      },
+      include: { category: true },
     });
+
+    return {
+      id: project.id,
+      categoryId: project.categoryId,
+      category: this.mapCategory(project.category),
+      name: project.name,
+      description: project.description,
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
+    };
   }
 
   async remove(id: number) {
@@ -148,6 +202,7 @@ export class ProjectsService {
           where: { isActive: true },
           orderBy: { createdAt: 'desc' },
         },
+        project: { include: { category: true } },
       },
     });
 
@@ -208,10 +263,44 @@ export class ProjectsService {
       sortOrder: subProject.sortOrder,
       createdAt: subProject.createdAt,
       updatedAt: subProject.updatedAt,
+      documentationEnabled: subProject.documentationEnabled,
+      project: subProject.project
+        ? {
+            id: subProject.project.id,
+            name: subProject.project.name,
+            category:
+              this.mapCategory(subProject.project.category) ?? undefined,
+          }
+        : undefined,
       contentCount: contents?.length ?? 0,
       textCommandCount: textCommands?.length ?? 0,
       contents,
       textCommands,
     };
+  }
+
+  private mapCategory(category?: any) {
+    if (!category) {
+      return null;
+    }
+
+    return {
+      id: category.id,
+      name: category.name,
+      description: category.description ?? null,
+      sortOrder: category.sortOrder,
+      isActive: category.isActive,
+    };
+  }
+
+  private async ensureCategoryExists(categoryId: number) {
+    const exists = await this.prisma.projectCategory.findFirst({
+      where: { id: categoryId, isActive: true },
+      select: { id: true },
+    });
+
+    if (!exists) {
+      throw new NotFoundException('项目分类不存在或已停用');
+    }
   }
 }

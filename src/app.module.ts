@@ -8,6 +8,8 @@ import { SubProjectsModule } from './modules/sub-projects/sub-projects.module';
 import { ContentTypesModule } from './modules/content-types/content-types.module';
 import { ContentsModule } from './modules/contents/contents.module';
 import { TextCommandsModule } from './modules/text-commands/text-commands.module';
+import { ProjectCategoriesModule } from './modules/project-categories/project-categories.module';
+import { DocumentationModule } from './modules/documentation/documentation.module';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { TextCommandsModule } from './modules/text-commands/text-commands.module
     ContentTypesModule,
     ContentsModule,
     TextCommandsModule,
+    ProjectCategoriesModule,
+    DocumentationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

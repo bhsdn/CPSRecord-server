@@ -8,43 +8,63 @@ datasource db {
 }
 
 model Project {
-  id          Int          @id @default(autoincrement())
-  name        String       @db.VarChar(255)
+  id          Int      @id @default(autoincrement())
+  categoryId  Int      @map("category_id")
+  name        String   @db.VarChar(255)
   description String?
-  createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @updatedAt @map("updated_at")
-  isActive    Boolean      @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  isActive    Boolean  @default(true) @map("is_active")
 
+  category    ProjectCategory @relation(fields: [categoryId], references: [id])
   subProjects SubProject[]
 
+  @@index([categoryId])
   @@map("projects")
 }
 
 model SubProject {
-  id          Int                 @id @default(autoincrement())
-  projectId   Int                 @map("project_id")
-  name        String              @db.VarChar(255)
-  description String?
-  sortOrder   Int                 @default(0) @map("sort_order")
-  createdAt   DateTime            @default(now()) @map("created_at")
-  updatedAt   DateTime            @updatedAt @map("updated_at")
-  isActive    Boolean             @default(true) @map("is_active")
+  id                   Int      @id @default(autoincrement())
+  projectId            Int      @map("project_id")
+  name                 String   @db.VarChar(255)
+  description          String?
+  sortOrder            Int      @default(0) @map("sort_order")
+  documentationEnabled Boolean  @default(false) @map("documentation_enabled")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+  isActive             Boolean  @default(true) @map("is_active")
 
   project      Project             @relation(fields: [projectId], references: [id])
   contents     SubProjectContent[]
   textCommands TextCommand[]
 
-  @@map("sub_projects")
   @@index([projectId])
+  @@map("sub_projects")
+}
+
+model ProjectCategory {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(100)
+  description String?
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  projects Project[]
+
+  @@index([isActive])
+  @@index([sortOrder])
+  @@map("project_categories")
 }
 
 model ContentType {
-  id        Int                 @id @default(autoincrement())
-  name      String              @unique @db.VarChar(100)
-  fieldType String              @map("field_type") @db.VarChar(50)
-  hasExpiry Boolean             @default(false) @map("has_expiry")
-  isSystem  Boolean             @default(false) @map("is_system")
-  createdAt DateTime            @default(now()) @map("created_at")
+  id        Int      @id @default(autoincrement())
+  name      String   @unique @db.VarChar(100)
+  fieldType String   @map("field_type") @db.VarChar(50)
+  hasExpiry Boolean  @default(false) @map("has_expiry")
+  isSystem  Boolean  @default(false) @map("is_system")
+  createdAt DateTime @default(now()) @map("created_at")
 
   contents SubProjectContent[]
 
@@ -66,23 +86,23 @@ model SubProjectContent {
   contentType ContentType @relation(fields: [contentTypeId], references: [id])
 
   @@unique([subProjectId, contentTypeId])
-  @@map("sub_project_contents")
   @@index([subProjectId])
+  @@map("sub_project_contents")
 }
 
 model TextCommand {
-  id           Int      @id @default(autoincrement())
-  subProjectId Int      @map("sub_project_id")
-  commandText  String   @map("command_text")
-  expiryDays   Int?     @map("expiry_days")
+  id           Int       @id @default(autoincrement())
+  subProjectId Int       @map("sub_project_id")
+  commandText  String    @map("command_text")
+  expiryDays   Int?      @map("expiry_days")
   expiryDate   DateTime? @map("expiry_date") @db.Date
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  isActive     Boolean   @default(true) @map("is_active")
 
   subProject SubProject @relation(fields: [subProjectId], references: [id])
 
-  @@map("text_commands")
   @@index([subProjectId])
   @@index([expiryDate])
+  @@map("text_commands")
 }

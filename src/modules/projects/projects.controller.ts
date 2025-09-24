@@ -24,7 +24,12 @@ export class ProjectsController {
 
   @Get()
   @ApiOperation({ summary: '获取项目列表' })
-  @ApiQuery({ name: 'page', required: false, type: Number, description: '页码' })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: '页码',
+  })
   @ApiQuery({
     name: 'limit',
     required: false,
@@ -37,7 +42,17 @@ export class ProjectsController {
     type: String,
     description: '搜索关键词',
   })
-  @ApiResponseWrapper({ status: 200, description: '获取项目列表成功', dataType: 'object' })
+  @ApiQuery({
+    name: 'categoryId',
+    required: false,
+    type: Number,
+    description: '项目分类ID',
+  })
+  @ApiResponseWrapper({
+    status: 200,
+    description: '获取项目列表成功',
+    dataType: 'object',
+  })
   async findAll(@Query() query: QueryProjectDto) {
     // 支持分页/搜索的项目列表
     return this.projectsService.findAll(query);
@@ -80,7 +95,11 @@ export class ProjectsController {
 
   @Get(':id/sub-projects')
   @ApiOperation({ summary: '获取项目的子项目列表' })
-  @ApiResponseWrapper({ status: 200, description: '获取子项目列表成功', dataType: 'array' })
+  @ApiResponseWrapper({
+    status: 200,
+    description: '获取子项目列表成功',
+    dataType: 'array',
+  })
   async getSubProjects(@Param('id', ParseIntPipe) id: number) {
     // 透出项目下的子项目列表，方便前端联动展示
     return this.projectsService.getSubProjects(id);

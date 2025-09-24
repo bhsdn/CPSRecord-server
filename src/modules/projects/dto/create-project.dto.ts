@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, Length } from 'class-validator';
+import { IsInt, IsOptional, IsString, Length, Min } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateProjectDto {
   @ApiProperty({ description: '项目名称', example: '淘宝CPS推广' })
@@ -16,4 +17,10 @@ export class CreateProjectDto {
   @IsString({ message: '项目描述必须是字符串' })
   @Length(0, 1000, { message: '项目描述长度不能超过1000个字符' })
   description?: string;
+
+  @ApiProperty({ description: '项目分类ID', example: 1 })
+  @Type(() => Number)
+  @IsInt({ message: '项目分类ID必须是整数' })
+  @Min(1, { message: '项目分类ID必须大于0' })
+  categoryId!: number;
 }

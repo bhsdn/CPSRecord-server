@@ -22,4 +22,11 @@ export class QueryProjectDto {
   @IsOptional()
   @IsString({ message: '搜索关键词必须是字符串' })
   search?: string;
+
+  @ApiProperty({ description: '项目分类ID', required: false, example: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: '项目分类ID必须是整数' })
+  @Min(1, { message: '项目分类ID必须大于0' })
+  categoryId?: number;
 }
