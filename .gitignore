@@ -141,8 +141,6 @@ temp/
 *.sqlite3
 
 # Prisma
-prisma/migrations/*
-!prisma/migrations/.gitkeep
 
 # NestJS
 dist/
