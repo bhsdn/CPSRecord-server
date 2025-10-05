@@ -72,21 +72,24 @@ model ContentType {
 }
 
 model SubProjectContent {
-  id            Int       @id @default(autoincrement())
-  subProjectId  Int       @map("sub_project_id")
-  contentTypeId Int       @map("content_type_id")
-  contentValue  String?   @map("content_value")
-  expiryDays    Int?      @map("expiry_days")
-  expiryDate    DateTime? @map("expiry_date") @db.Date
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-  isActive      Boolean   @default(true) @map("is_active")
+  id              Int       @id @default(autoincrement())
+  subProjectId    Int       @map("sub_project_id")
+  contentTypeId   Int       @map("content_type_id")
+  contentValue    String?   @map("content_value")
+  uploadedImageId Int?      @map("uploaded_image_id")
+  expiryDays      Int?      @map("expiry_days")
+  expiryDate      DateTime? @map("expiry_date") @db.Date
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  isActive        Boolean   @default(true) @map("is_active")
 
-  subProject  SubProject  @relation(fields: [subProjectId], references: [id])
-  contentType ContentType @relation(fields: [contentTypeId], references: [id])
+  subProject    SubProject     @relation(fields: [subProjectId], references: [id])
+  contentType   ContentType    @relation(fields: [contentTypeId], references: [id])
+  uploadedImage UploadedImage? @relation(fields: [uploadedImageId], references: [id])
 
   @@unique([subProjectId, contentTypeId])
   @@index([subProjectId])
+  @@index([uploadedImageId])
   @@map("sub_project_contents")
 }
 
@@ -105,4 +108,32 @@ model TextCommand {
   @@index([subProjectId])
   @@index([expiryDate])
   @@map("text_commands")
+}
+
+model UploadedImage {
+  id         Int      @id @default(autoincrement())
+  key        String   @unique @db.VarChar(255)
+  name       String   @db.VarChar(255)
+  pathname   String   @db.VarChar(500)
+  originName String   @map("origin_name") @db.VarChar(255)
+  size       Float
+  width      Int?
+  height     Int?
+  mimetype   String   @db.VarChar(100)
+  extension  String   @db.VarChar(20)
+  md5        String   @db.VarChar(32)
+  sha1       String   @db.VarChar(40)
+  links      Json
+  albumId    Int?     @map("album_id")
+  permission Int      @default(1)
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  contents SubProjectContent[]
+
+  @@index([key])
+  @@index([md5])
+  @@index([createdAt])
+  @@map("uploaded_images")
 }

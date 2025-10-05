@@ -10,6 +10,7 @@ import { ContentsModule } from './modules/contents/contents.module';
 import { TextCommandsModule } from './modules/text-commands/text-commands.module';
 import { ProjectCategoriesModule } from './modules/project-categories/project-categories.module';
 import { DocumentationModule } from './modules/documentation/documentation.module';
+import { UploadedImagesModule } from './modules/uploaded-images/uploaded-images.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { DocumentationModule } from './modules/documentation/documentation.modul
     TextCommandsModule,
     ProjectCategoriesModule,
     DocumentationModule,
+    UploadedImagesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
