@@ -34,7 +34,11 @@ export class ProjectsService {
       this.prisma.project.count({ where }),
       this.prisma.project.findMany({
         where,
-        orderBy: { updatedAt: 'desc' },
+        // 多级排序：先按分类排序权重升序，再按项目更新时间倒序
+        orderBy: [
+          { category: { sortOrder: 'desc' } },
+          { updatedAt: 'desc' },
+        ],
         skip: (page - 1) * limit,
         take: limit,
         include: {

@@ -16,8 +16,24 @@ async function bootstrap() {
   app.use(helmet());
   // 统一给所有接口加上 api 前缀，方便前端区分版本
   app.setGlobalPrefix('api');
+  // 配置 CORS,支持多个前端域名
+  const allowedOrigins = process.env.FRONTEND_URL
+    ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
+    : ['http://localhost:5173', 'http://localhost:3000'];
+
   app.enableCors({
-    origin: process.env.FRONTEND_URL ?? true,
+    origin: (origin, callback) => {
+      // 允许无 origin 的请求(如 Postman、服务端请求)
+      if (!origin) {
+        return callback(null, true);
+      }
+      // 检查请求来源是否在白名单中
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   });

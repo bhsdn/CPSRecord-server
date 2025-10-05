@@ -4,14 +4,33 @@
   "metadata": {
     "version": "2.0.0",
     "description": "project 级资源注册表",
-    "createdAt": "2025-09-19T17:52:03.607Z",
-    "updatedAt": "2025-09-19T17:52:03.608Z",
-    "resourceCount": 0
+    "createdAt": "2025-10-05T08:50:13.828Z",
+    "updatedAt": "2025-10-05T08:50:13.850Z",
+    "resourceCount": 1
   },
-  "resources": [],
+  "resources": [
+    {
+      "id": "nestjs-backend-dev",
+      "source": "project",
+      "protocol": "role",
+      "name": "Nestjs Backend Dev 角色",
+      "description": "专业角色，提供特定领域的专业能力",
+      "reference": "@project://.promptx/resource/role/nestjs-backend-dev/nestjs-backend-dev.role.md",
+      "metadata": {
+        "createdAt": "2025-10-05T08:50:13.849Z",
+        "updatedAt": "2025-10-05T08:50:13.849Z",
+        "scannedAt": "2025-10-05T08:50:13.849Z",
+        "path": "role/nestjs-backend-dev/nestjs-backend-dev.role.md"
+      }
+    }
+  ],
   "stats": {
-    "totalResources": 0,
-    "byProtocol": {},
-    "bySource": {}
+    "totalResources": 1,
+    "byProtocol": {
+      "role": 1
+    },
+    "bySource": {
+      "project": 1
+    }
   }
 }
