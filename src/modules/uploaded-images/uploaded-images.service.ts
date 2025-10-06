@@ -1,3 +1,11 @@
+/*
+ * @Descripttion: js
+ * @Version: 1.0
+ * @Author: name
+ * @Date: 2025-10-05 23:47:47
+ * @LastEditors: name
+ * @LastEditTime: 2025-10-06 01:40:11
+ */
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../common/database/prisma.service';
 import { CreateUploadedImageDto } from './dto/create-uploaded-image.dto';
@@ -14,7 +22,27 @@ export class UploadedImagesService {
   private readonly PICUI_TOKEN = process.env.PICUI_TOKEN || '';
 
   /**
+   * 调用 PICUI API 删除图片（私有方法）
+   * @param key 图片的唯一标识
+   */
+  private async deletePicuiImage(key: string): Promise<void> {
+    if (!this.PICUI_TOKEN) {
+      console.warn('PICUI_TOKEN 未配置，跳过远程删除');
+      return;
+    }
+
+    const deleteUrl = `${this.PICUI_API_URL}/images/${key}`;
+    await axios.delete(deleteUrl, {
+      headers: {
+        Authorization: `Bearer ${this.PICUI_TOKEN}`,
+        Accept: 'application/json',
+      },
+    });
+  }
+
+  /**
    * 保存上传的图片信息到数据库
+   * 如果检测到重复（相同 MD5），则删除新上传的图片并返回已存在的记录
    */
   async create(createDto: CreateUploadedImageDto) {
     // 检查是否已存在相同 MD5 的图片（去重）
@@ -23,8 +51,21 @@ export class UploadedImagesService {
     });
 
     if (existing) {
-      // 如果已存在，返回现有记录
-      return existing;
+      // 如果已存在，删除新上传的重复图片
+      try {
+        await this.deletePicuiImage(createDto.key);
+        console.log(`已删除重复图片: ${createDto.key} (MD5: ${createDto.md5})`);
+      } catch (error) {
+        console.error('删除重复图片失败:', error);
+        // 即使删除失败也继续，不影响返回已存在的记录
+      }
+
+      // 返回现有记录
+      return {
+        ...existing,
+        isDuplicate: true, // 标记为重复
+        duplicateKey: createDto.key, // 记录被删除的图片 key
+      };
     }
 
     // 创建新记录
@@ -154,15 +195,7 @@ export class UploadedImagesService {
 
     // 调用 PICUI API 删除图片
     try {
-      if (this.PICUI_TOKEN && image.links && (image.links as any).delete_url) {
-        const deleteUrl = (image.links as any).delete_url;
-        await axios.delete(deleteUrl, {
-          headers: {
-            Authorization: `Bearer ${this.PICUI_TOKEN}`,
-            Accept: 'application/json',
-          },
-        });
-      }
+      await this.deletePicuiImage(image.key);
     } catch (error) {
       console.error('调用 PICUI 删除接口失败:', error);
       // 即使 PICUI 删除失败，也继续删除本地记录

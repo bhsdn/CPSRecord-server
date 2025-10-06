@@ -45,6 +45,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
     this.logger.error(
       `${request.method} ${request.url} -> ${status}: ${JSON.stringify(message)}`,
     );
+    
+    // 打印完整错误信息用于调试
+    if (exception instanceof Error) {
+      console.error('错误堆栈:', exception.stack);
+    } else {
+      console.error('异常对象:', exception);
+    }
 
     response.status(status).json({
       success: false,

@@ -1,3 +1,11 @@
+/*
+ * @Descripttion: js
+ * @Version: 1.0
+ * @Author: name
+ * @Date: 2025-10-05 23:48:02
+ * @LastEditors: name
+ * @LastEditTime: 2025-10-06 13:43:53
+ */
 import {
   Controller,
   Get,
@@ -9,6 +17,7 @@ import {
   ParseIntPipe,
   HttpCode,
   HttpStatus,
+  BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { UploadedImagesService } from './uploaded-images.service';
@@ -56,7 +65,7 @@ export class UploadedImagesController {
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '物理删除图片（同时删除 PICUI 上的图片）' })
-  @ApiParam({ name: 'id', description: '图片 ID' })
+  @ApiParam({ name: 'id', description: '图片 ID', type: Number })
   @ApiResponse({ status: 200, description: '删除成功' })
   @ApiResponse({ status: 400, description: '图片正在使用中，无法删除' })
   @ApiResponse({ status: 404, description: '图片不存在' })

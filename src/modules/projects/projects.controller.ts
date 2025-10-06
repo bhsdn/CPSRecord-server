@@ -55,6 +55,7 @@ export class ProjectsController {
   })
   async findAll(@Query() query: QueryProjectDto) {
     // 支持分页/搜索的项目列表
+    console.log('query', query);
     return this.projectsService.findAll(query);
   }
 

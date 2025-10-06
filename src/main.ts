@@ -6,6 +6,7 @@ import { CustomValidationPipe } from './common/pipes/validation.pipe';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { Request, Response, NextFunction } from 'express';
 
 // 启动入口函数，负责初始化整个 Nest 应用
 async function bootstrap() {
@@ -23,15 +24,27 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
-      // 允许无 origin 的请求(如 Postman、服务端请求)
+      console.log('CORS 检查 - origin:', origin);
+      
+      // 允许无 origin 的请求(如 Postman、服务端请求、Swagger UI)
       if (!origin) {
         return callback(null, true);
       }
+      
       // 检查请求来源是否在白名单中
       if (allowedOrigins.includes(origin)) {
+        console.log('CORS 允许:', origin);
         callback(null, true);
       } else {
-        callback(new Error('Not allowed by CORS'));
+        console.log('CORS 拒绝:', origin);
+        // Swagger UI 是从同源访问的，应该允许
+        // 简化处理：开发环境允许所有 localhost
+        if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+          console.log('CORS 允许 (localhost):', origin);
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
       }
     },
     credentials: true,
