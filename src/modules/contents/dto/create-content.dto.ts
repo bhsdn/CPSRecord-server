@@ -26,6 +26,13 @@ export class CreateContentDto {
   @Length(1, 2000, { message: '内容值长度必须在1-2000个字符之间' })
   contentValue!: string;
 
+  @ApiProperty({ description: '上传图片ID（图片类型内容关联）', example: 1, required: false })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: '上传图片ID必须是整数' })
+  @Min(1, { message: '上传图片ID必须大于0' })
+  uploadedImageId?: number;
+
   @ApiProperty({ description: '有效天数', example: 30, required: false })
   @IsOptional()
   @Type(() => Number)

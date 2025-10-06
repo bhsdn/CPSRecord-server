@@ -29,7 +29,7 @@ export class ContentsService {
         ...(subProjectId ? { subProjectId } : {}),
         ...this.buildStatusWhere(status),
       },
-      include: { contentType: true, subProject: true },
+      include: { contentType: true, subProject: true, uploadedImage: true },
       orderBy: { createdAt: 'desc' },
     })).map((content) => this.mapContent(content));
   }
@@ -37,7 +37,7 @@ export class ContentsService {
   async findOne(id: number) {
     const content = await this.prisma.subProjectContent.findFirst({
       where: { id, isActive: true },
-      include: { contentType: true, subProject: true },
+      include: { contentType: true, subProject: true, uploadedImage: true },
     });
 
     if (!content) {
@@ -74,12 +74,13 @@ export class ContentsService {
         subProject: { connect: { id: dto.subProjectId } },
         contentType: { connect: { id: dto.contentTypeId } },
         contentValue: dto.contentValue,
+        uploadedImageId: dto.uploadedImageId,
         expiryDays: contentType.hasExpiry ? dto.expiryDays : null,
         expiryDate: contentType.hasExpiry
           ? calculateExpiryDate(dto.expiryDays) ?? undefined
           : null,
       },
-      include: { contentType: true, subProject: true },
+      include: { contentType: true, subProject: true, uploadedImage: true },
     }).then((content) => this.mapContent(content));
   }
 
@@ -121,12 +122,13 @@ export class ContentsService {
         data: {
           contentTypeId: dto.contentTypeId,
           contentValue: dto.contentValue,
+          uploadedImageId: dto.uploadedImageId,
           expiryDays: contentType.hasExpiry ? nextExpiryDays : null,
           expiryDate: contentType.hasExpiry
             ? calculateExpiryDate(nextExpiryDays) ?? undefined
             : null,
         },
-        include: { contentType: true, subProject: true },
+        include: { contentType: true, subProject: true, uploadedImage: true },
       })
       .then((updated) => this.mapContent(updated));
   }
@@ -147,7 +149,7 @@ export class ContentsService {
     // 共用的存在性校验，返回带内容类型的对象
     const content = await this.prisma.subProjectContent.findFirst({
       where: { id, isActive: true },
-      include: { contentType: true, subProject: true },
+      include: { contentType: true, subProject: true, uploadedImage: true },
     });
     if (!content) {
       throw new NotFoundException('子项目内容不存在');
@@ -272,6 +274,19 @@ export class ContentsService {
             name: content.subProject.name,
           }
         : undefined,
+      // 图片信息（如果关联了图片）
+      uploadedImage: content.uploadedImage
+        ? {
+            id: content.uploadedImage.id,
+            key: content.uploadedImage.key,
+            url: (content.uploadedImage.links as any)?.url,
+            thumbnailUrl: (content.uploadedImage.links as any)?.thumbnail_url,
+            width: content.uploadedImage.width,
+            height: content.uploadedImage.height,
+            size: content.uploadedImage.size,
+            mimetype: content.uploadedImage.mimetype,
+          }
+        : null,
       expiryStatus: meta?.status ?? null,
       daysRemaining: meta?.daysRemaining ?? null,
     };
