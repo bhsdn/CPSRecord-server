@@ -35,7 +35,10 @@ export class SubProjectsService {
       orderBy: { sortOrder: 'asc' },
       include: {
         project: { include: { category: true } },
-        contents: { where: { isActive: true }, include: { contentType: true } },
+        contents: { 
+          where: { isActive: true }, 
+          include: { contentType: true, uploadedImage: true },
+        },
         textCommands: {
           where: { isActive: true },
           orderBy: { createdAt: 'desc' },
@@ -51,7 +54,10 @@ export class SubProjectsService {
       where: { id, isActive: true },
       include: {
         project: { include: { category: true } },
-        contents: { where: { isActive: true }, include: { contentType: true } },
+        contents: { 
+          where: { isActive: true }, 
+          include: { contentType: true, uploadedImage: true },
+        },
         textCommands: {
           where: { isActive: true },
           orderBy: { createdAt: 'desc' },
@@ -180,6 +186,19 @@ export class SubProjectsService {
         createdAt: content.createdAt,
         updatedAt: content.updatedAt,
         contentType: content.contentType,
+        // 图片信息（如果关联了图片）
+        uploadedImage: content.uploadedImage
+          ? {
+              id: content.uploadedImage.id,
+              key: content.uploadedImage.key,
+              url: (content.uploadedImage.links as any)?.url,
+              thumbnailUrl: (content.uploadedImage.links as any)?.thumbnail_url,
+              width: content.uploadedImage.width,
+              height: content.uploadedImage.height,
+              size: content.uploadedImage.size,
+              mimetype: content.uploadedImage.mimetype,
+            }
+          : null,
         expiryStatus: meta?.status ?? null,
         daysRemaining: meta?.daysRemaining ?? null,
       };

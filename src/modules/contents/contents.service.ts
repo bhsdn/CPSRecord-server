@@ -68,13 +68,12 @@ export class ContentsService {
     // 根据内容类型的配置校验有效期和内容值
     this.assertExpiryRule(contentType.hasExpiry, dto.expiryDays);
     this.assertContentValue(contentType.fieldType, dto.contentValue);
-
     return this.prisma.subProjectContent.create({
       data: {
-        subProject: { connect: { id: dto.subProjectId } },
-        contentType: { connect: { id: dto.contentTypeId } },
+        subProjectId: dto.subProjectId,
+        contentTypeId: dto.contentTypeId,
         contentValue: dto.contentValue,
-        uploadedImageId: dto.uploadedImageId,
+        ...(dto.uploadedImageId ? { uploadedImageId: dto.uploadedImageId } : {}),
         expiryDays: contentType.hasExpiry ? dto.expiryDays : null,
         expiryDate: contentType.hasExpiry
           ? calculateExpiryDate(dto.expiryDays) ?? undefined
@@ -82,6 +81,7 @@ export class ContentsService {
       },
       include: { contentType: true, subProject: true, uploadedImage: true },
     }).then((content) => this.mapContent(content));
+    
   }
 
   async update(id: number, dto: UpdateContentDto) {
@@ -122,7 +122,7 @@ export class ContentsService {
         data: {
           contentTypeId: dto.contentTypeId,
           contentValue: dto.contentValue,
-          uploadedImageId: dto.uploadedImageId,
+          uploadedImageId: dto.uploadedImageId ?? undefined,
           expiryDays: contentType.hasExpiry ? nextExpiryDays : null,
           expiryDate: contentType.hasExpiry
             ? calculateExpiryDate(nextExpiryDays) ?? undefined
