@@ -26,6 +26,18 @@ export class ProjectCategoriesController {
   @Get()
   @ApiOperation({ summary: '获取项目分类列表' })
   @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: '页码',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: '每页数量',
+  })
+  @ApiQuery({
     name: 'includeInactive',
     required: false,
     type: Boolean,
@@ -34,7 +46,7 @@ export class ProjectCategoriesController {
   @ApiResponseWrapper({
     status: 200,
     description: '获取项目分类列表成功',
-    dataType: 'array',
+    dataType: 'object',
   })
   async findAll(@Query() query: QueryProjectCategoryDto) {
     return this.projectCategoriesService.findAll(query);

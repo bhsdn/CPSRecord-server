@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/database/prisma.service';
 import { resolveExpiryStatus } from '../../common/utils/date.util';
+import { buildPaginationResponse } from '../../common/utils/response.util';
 import { QueryDocumentationDto } from './dto/query-documentation.dto';
 
 @Injectable()
@@ -9,7 +10,7 @@ export class DocumentationService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(query: QueryDocumentationDto) {
-    const { categoryId, projectId, search } = query;
+    const { page = 1, limit = 10, categoryId, projectId, search } = query;
 
     const where: Prisma.SubProjectWhereInput = {
       isActive: true,
@@ -29,23 +30,33 @@ export class DocumentationService {
       },
     };
 
-    const subProjects = await this.prisma.subProject.findMany({
-      where,
-      orderBy: [{ projectId: 'asc' }, { sortOrder: 'asc' }],
-      include: {
-        project: { include: { category: true } },
-        contents: {
-          where: { isActive: true },
-          include: { contentType: true },
+    // 使用事务同时获取总数和分页数据，确保数据一致性
+    const [total, subProjects] = await this.prisma.$transaction([
+      this.prisma.subProject.count({ where }),
+      this.prisma.subProject.findMany({
+        where,
+        orderBy: [{ projectId: 'asc' }, { sortOrder: 'asc' }],
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          project: { include: { category: true } },
+          contents: {
+            where: { isActive: true },
+            include: { contentType: true },
+          },
+          textCommands: {
+            where: { isActive: true },
+            orderBy: { createdAt: 'desc' },
+          },
         },
-        textCommands: {
-          where: { isActive: true },
-          orderBy: { createdAt: 'desc' },
-        },
-      },
-    });
+      }),
+    ]);
 
-    return subProjects.map((subProject) => this.mapDocumentation(subProject));
+    const documents = subProjects.map((subProject) =>
+      this.mapDocumentation(subProject),
+    );
+
+    return buildPaginationResponse(documents, total, page, limit);
   }
 
   private mapDocumentation(subProject: any) {

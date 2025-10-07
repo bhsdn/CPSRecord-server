@@ -12,6 +12,18 @@ export class DocumentationController {
   @Get()
   @ApiOperation({ summary: '获取开启文档的子项目列表' })
   @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: '页码',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: '每页数量',
+  })
+  @ApiQuery({
     name: 'projectId',
     required: false,
     type: Number,
@@ -32,7 +44,7 @@ export class DocumentationController {
   @ApiResponseWrapper({
     status: 200,
     description: '获取文档列表成功',
-    dataType: 'array',
+    dataType: 'object',
   })
   async findAll(@Query() query: QueryDocumentationDto) {
     return this.documentationService.findAll(query);

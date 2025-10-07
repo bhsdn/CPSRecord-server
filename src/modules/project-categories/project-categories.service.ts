@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/database/prisma.service';
+import { buildPaginationResponse } from '../../common/utils/response.util';
 import { CreateProjectCategoryDto } from './dto/create-project-category.dto';
 import { UpdateProjectCategoryDto } from './dto/update-project-category.dto';
 import { QueryProjectCategoryDto } from './dto/query-project-category.dto';
@@ -13,20 +14,32 @@ export class ProjectCategoriesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(query: QueryProjectCategoryDto) {
-    const { includeInactive } = query;
+    const { page = 1, limit = 10, includeInactive } = query;
 
-    const categories = await this.prisma.projectCategory.findMany({
-      where: includeInactive ? {} : { isActive: true },
-      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
-      include: {
-        projects: {
-          where: { isActive: true },
-          select: { id: true },
+    const where = includeInactive ? {} : { isActive: true };
+
+    // 使用事务同时获取总数和分页数据，确保数据一致性
+    const [total, categories] = await this.prisma.$transaction([
+      this.prisma.projectCategory.count({ where }),
+      this.prisma.projectCategory.findMany({
+        where,
+        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          projects: {
+            where: { isActive: true },
+            select: { id: true },
+          },
         },
-      },
-    });
+      }),
+    ]);
 
-    return categories.map((category) => this.mapCategory(category));
+    const mappedCategories = categories.map((category) =>
+      this.mapCategory(category),
+    );
+
+    return buildPaginationResponse(mappedCategories, total, page, limit);
   }
 
   async findOne(id: number) {
