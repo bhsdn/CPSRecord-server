@@ -14,11 +14,15 @@ import {
 } from '../../common/utils/date.util';
 import { Prisma } from '@prisma/client';
 import { isURL } from 'class-validator';
+import { UploadedImagesService } from '../uploaded-images/uploaded-images.service';
 
 @Injectable()
 export class ContentsService {
   // 所有内容相关的数据库操作都放在这里
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly uploadedImagesService: UploadedImagesService,
+  ) {}
 
   async findAll(query: QueryContentDto) {
     const { subProjectId, status } = query;
@@ -116,7 +120,15 @@ export class ContentsService {
       dto.contentTypeId ? undefined : content.expiryDays,
     );
 
-    return this.prisma.subProjectContent
+    // 记录旧图片ID（用于后续删除）
+    const oldImageId = content.uploadedImageId;
+    const shouldDeleteOldImage = 
+      dto.uploadedImageId !== undefined && 
+      oldImageId && 
+      dto.uploadedImageId !== oldImageId;
+
+    // 先更新内容记录（解除旧图片关联）
+    const updated = await this.prisma.subProjectContent
       .update({
         where: { id },
         data: {
@@ -131,6 +143,19 @@ export class ContentsService {
         include: { contentType: true, subProject: true, uploadedImage: true },
       })
       .then((updated) => this.mapContent(updated));
+
+    // 更新成功后，删除旧图片（此时已解除关联）
+    if (shouldDeleteOldImage) {
+      try {
+        await this.uploadedImagesService.remove(oldImageId);
+        console.log(`已删除旧图片 ID: ${oldImageId}`);
+      } catch (error) {
+        console.error('删除旧图片失败:', error);
+        // 删除失败不影响业务，内容已经更新成功
+      }
+    }
+
+    return updated;
   }
 
   async remove(id: number) {
