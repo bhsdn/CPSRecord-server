@@ -181,6 +181,7 @@ export class SubProjectsService {
         subProjectId: content.subProjectId,
         contentTypeId: content.contentTypeId,
         contentValue: content.contentValue,
+        uploadedImageId: content.uploadedImageId ?? null,
         expiryDays: content.expiryDays ?? null,
         expiryDate: content.expiryDate,
         createdAt: content.createdAt,
