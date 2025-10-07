@@ -178,7 +178,7 @@ export interface ProjectCategory {
   description?: string;
   sortOrder: number;
   isActive: boolean;
-  projectCount?: number;
+  activeProjectCount?: number;
 }
 
 // types/documentation.ts
@@ -321,7 +321,7 @@ export const useProjectCategoriesStore = defineStore(
     };
 
     const createCategory = async (
-      payload: Omit<ProjectCategory, "id" | "projectCount">
+      payload: Omit<ProjectCategory, "id" | "activeProjectCount">
     ) => {
       const response = await api.post("/project-categories", payload);
       categories.value.push(response.data);
