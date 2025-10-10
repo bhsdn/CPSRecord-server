@@ -4,8 +4,8 @@
   "metadata": {
     "version": "2.0.0",
     "description": "project 级资源注册表",
-    "createdAt": "2025-10-05T08:50:13.828Z",
-    "updatedAt": "2025-10-05T08:50:13.850Z",
+    "createdAt": "2025-10-07T17:07:35.075Z",
+    "updatedAt": "2025-10-07T17:07:35.078Z",
     "resourceCount": 1
   },
   "resources": [
@@ -17,9 +17,9 @@
       "description": "专业角色，提供特定领域的专业能力",
       "reference": "@project://.promptx/resource/role/nestjs-backend-dev/nestjs-backend-dev.role.md",
       "metadata": {
-        "createdAt": "2025-10-05T08:50:13.849Z",
-        "updatedAt": "2025-10-05T08:50:13.849Z",
-        "scannedAt": "2025-10-05T08:50:13.849Z",
+        "createdAt": "2025-10-07T17:07:35.077Z",
+        "updatedAt": "2025-10-07T17:07:35.077Z",
+        "scannedAt": "2025-10-07T17:07:35.077Z",
         "path": "role/nestjs-backend-dev/nestjs-backend-dev.role.md"
       }
     }

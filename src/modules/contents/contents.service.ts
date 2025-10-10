@@ -2,40 +2,42 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
-import { PrismaService } from '../../common/database/prisma.service';
-import { CreateContentDto } from './dto/create-content.dto';
-import { UpdateContentDto } from './dto/update-content.dto';
-import { QueryContentDto } from './dto/query-content.dto';
+} from "@nestjs/common";
+import { PrismaService } from "../../common/database/prisma.service";
+import { CreateContentDto } from "./dto/create-content.dto";
+import { UpdateContentDto } from "./dto/update-content.dto";
+import { QueryContentDto } from "./dto/query-content.dto";
 import {
   calculateExpiryDate,
   resolveExpiryStatus,
   ExpiryStatus,
-} from '../../common/utils/date.util';
-import { Prisma } from '@prisma/client';
-import { isURL } from 'class-validator';
-import { UploadedImagesService } from '../uploaded-images/uploaded-images.service';
+} from "../../common/utils/date.util";
+import { Prisma } from "@prisma/client";
+import { isURL } from "class-validator";
+import { UploadedImagesService } from "../uploaded-images/uploaded-images.service";
 
 @Injectable()
 export class ContentsService {
   // 所有内容相关的数据库操作都放在这里
   constructor(
     private readonly prisma: PrismaService,
-    private readonly uploadedImagesService: UploadedImagesService,
+    private readonly uploadedImagesService: UploadedImagesService
   ) {}
 
   async findAll(query: QueryContentDto) {
     const { subProjectId, status } = query;
 
-    return (await this.prisma.subProjectContent.findMany({
-      where: {
-        isActive: true,
-        ...(subProjectId ? { subProjectId } : {}),
-        ...this.buildStatusWhere(status),
-      },
-      include: { contentType: true, subProject: true, uploadedImage: true },
-      orderBy: { createdAt: 'desc' },
-    })).map((content) => this.mapContent(content));
+    return (
+      await this.prisma.subProjectContent.findMany({
+        where: {
+          isActive: true,
+          ...(subProjectId ? { subProjectId } : {}),
+          ...this.buildStatusWhere(status),
+        },
+        include: { contentType: true, subProject: true, uploadedImage: true },
+        orderBy: { createdAt: "desc" },
+      })
+    ).map((content) => this.mapContent(content));
   }
 
   async findOne(id: number) {
@@ -45,7 +47,7 @@ export class ContentsService {
     });
 
     if (!content) {
-      throw new NotFoundException('子项目内容不存在');
+      throw new NotFoundException("子项目内容不存在");
     }
 
     return this.mapContent(content);
@@ -66,26 +68,30 @@ export class ContentsService {
     });
 
     if (existing) {
-      throw new BadRequestException('该子项目已存在相同类型的内容');
+      throw new BadRequestException("该子项目已存在相同类型的内容");
     }
 
     // 根据内容类型的配置校验有效期和内容值
     this.assertExpiryRule(contentType.hasExpiry, dto.expiryDays);
     this.assertContentValue(contentType.fieldType, dto.contentValue);
-    return this.prisma.subProjectContent.create({
-      data: {
-        subProjectId: dto.subProjectId,
-        contentTypeId: dto.contentTypeId,
-        contentValue: dto.contentValue,
-        ...(dto.uploadedImageId ? { uploadedImageId: dto.uploadedImageId } : {}),
-        expiryDays: contentType.hasExpiry ? dto.expiryDays : null,
-        expiryDate: contentType.hasExpiry
-          ? calculateExpiryDate(dto.expiryDays) ?? undefined
-          : null,
-      },
-      include: { contentType: true, subProject: true, uploadedImage: true },
-    }).then((content) => this.mapContent(content));
-    
+    return this.prisma.subProjectContent
+      .create({
+        data: {
+          subProjectId: dto.subProjectId,
+          contentTypeId: dto.contentTypeId,
+          contentValue: dto.contentValue,
+          ...(dto.uploadedImageId
+            ? { uploadedImageId: dto.uploadedImageId }
+            : {}),
+          showInDocumentation: dto.showInDocumentation ?? true,
+          expiryDays: contentType.hasExpiry ? dto.expiryDays : null,
+          expiryDate: contentType.hasExpiry
+            ? (calculateExpiryDate(dto.expiryDays) ?? undefined)
+            : null,
+        },
+        include: { contentType: true, subProject: true, uploadedImage: true },
+      })
+      .then((content) => this.mapContent(content));
   }
 
   async update(id: number, dto: UpdateContentDto) {
@@ -105,7 +111,7 @@ export class ContentsService {
         },
       });
       if (duplicate) {
-        throw new BadRequestException('该子项目已存在相同类型的内容');
+        throw new BadRequestException("该子项目已存在相同类型的内容");
       }
     }
 
@@ -117,14 +123,14 @@ export class ContentsService {
     const nextExpiryDays = this.resolveExpiryDays(
       contentType.hasExpiry,
       dto.expiryDays,
-      dto.contentTypeId ? undefined : content.expiryDays,
+      dto.contentTypeId ? undefined : content.expiryDays
     );
 
     // 记录旧图片ID（用于后续删除）
     const oldImageId = content.uploadedImageId;
-    const shouldDeleteOldImage = 
-      dto.uploadedImageId !== undefined && 
-      oldImageId && 
+    const shouldDeleteOldImage =
+      dto.uploadedImageId !== undefined &&
+      oldImageId &&
       dto.uploadedImageId !== oldImageId;
 
     // 先更新内容记录（解除旧图片关联）
@@ -135,9 +141,12 @@ export class ContentsService {
           contentTypeId: dto.contentTypeId,
           contentValue: dto.contentValue,
           uploadedImageId: dto.uploadedImageId ?? undefined,
+          ...(dto.showInDocumentation !== undefined
+            ? { showInDocumentation: dto.showInDocumentation }
+            : {}),
           expiryDays: contentType.hasExpiry ? nextExpiryDays : null,
           expiryDate: contentType.hasExpiry
-            ? calculateExpiryDate(nextExpiryDays) ?? undefined
+            ? (calculateExpiryDate(nextExpiryDays) ?? undefined)
             : null,
         },
         include: { contentType: true, subProject: true, uploadedImage: true },
@@ -150,7 +159,7 @@ export class ContentsService {
         await this.uploadedImagesService.remove(oldImageId);
         console.log(`已删除旧图片 ID: ${oldImageId}`);
       } catch (error) {
-        console.error('删除旧图片失败:', error);
+        console.error("删除旧图片失败:", error);
         // 删除失败不影响业务，内容已经更新成功
       }
     }
@@ -167,7 +176,7 @@ export class ContentsService {
       data: { isActive: false },
     });
 
-    return { message: '子项目内容删除成功' };
+    return { message: "子项目内容删除成功" };
   }
 
   private async ensureExists(id: number) {
@@ -177,7 +186,7 @@ export class ContentsService {
       include: { contentType: true, subProject: true, uploadedImage: true },
     });
     if (!content) {
-      throw new NotFoundException('子项目内容不存在');
+      throw new NotFoundException("子项目内容不存在");
     }
     return content;
   }
@@ -187,7 +196,7 @@ export class ContentsService {
       where: { id: subProjectId, isActive: true },
     });
     if (!subProject) {
-      throw new NotFoundException('子项目不存在');
+      throw new NotFoundException("子项目不存在");
     }
   }
 
@@ -196,7 +205,7 @@ export class ContentsService {
       where: { id: contentTypeId },
     });
     if (!contentType) {
-      throw new NotFoundException('内容类型不存在');
+      throw new NotFoundException("内容类型不存在");
     }
     return contentType;
   }
@@ -204,36 +213,36 @@ export class ContentsService {
   private assertExpiryRule(hasExpiry: boolean, expiryDays?: number) {
     // 不同类型的内容对有效期有强制要求
     if (hasExpiry && (expiryDays === undefined || expiryDays === null)) {
-      throw new BadRequestException('该内容类型需要设置有效天数');
+      throw new BadRequestException("该内容类型需要设置有效天数");
     }
 
     if (!hasExpiry && expiryDays !== undefined) {
-      throw new BadRequestException('该内容类型无需设置有效天数');
+      throw new BadRequestException("该内容类型无需设置有效天数");
     }
   }
 
   private assertContentValue(fieldType: string, value: string) {
     if (!value) {
-      throw new BadRequestException('内容值不能为空');
+      throw new BadRequestException("内容值不能为空");
     }
 
-    if (['url', 'image'].includes(fieldType) && !isURL(value)) {
-      throw new BadRequestException('内容值必须是合法的链接地址');
+    if (["url", "image"].includes(fieldType) && !isURL(value)) {
+      throw new BadRequestException("内容值必须是合法的链接地址");
     }
 
-    if (fieldType === 'number' && Number.isNaN(Number(value))) {
-      throw new BadRequestException('内容值必须是数值');
+    if (fieldType === "number" && Number.isNaN(Number(value))) {
+      throw new BadRequestException("内容值必须是数值");
     }
 
-    if (fieldType === 'date' && Number.isNaN(Date.parse(value))) {
-      throw new BadRequestException('内容值必须是合法的日期');
+    if (fieldType === "date" && Number.isNaN(Date.parse(value))) {
+      throw new BadRequestException("内容值必须是合法的日期");
     }
   }
 
   private resolveExpiryDays(
     hasExpiry: boolean,
     incoming?: number,
-    fallback?: number | null,
+    fallback?: number | null
   ) {
     if (!hasExpiry) {
       return null;
@@ -241,12 +250,14 @@ export class ContentsService {
 
     const resolved = incoming ?? fallback;
     if (resolved === null || resolved === undefined) {
-      throw new BadRequestException('该内容类型需要设置有效天数');
+      throw new BadRequestException("该内容类型需要设置有效天数");
     }
     return resolved;
   }
 
-  private buildStatusWhere(status?: ExpiryStatus): Prisma.SubProjectContentWhereInput {
+  private buildStatusWhere(
+    status?: ExpiryStatus
+  ): Prisma.SubProjectContentWhereInput {
     if (!status) {
       return {};
     }
@@ -254,7 +265,7 @@ export class ContentsService {
     // 通过状态过滤不同有效期范围的数据
     const today = new Date();
     const startOfToday = new Date(
-      Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()),
+      Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())
     );
     const addDays = (days: number) => {
       const base = new Date(startOfToday);
@@ -265,14 +276,14 @@ export class ContentsService {
     const expiryDate: Prisma.DateTimeNullableFilter = { not: null };
 
     switch (status) {
-      case 'safe':
+      case "safe":
         expiryDate.gt = addDays(7);
         break;
-      case 'warning':
+      case "warning":
         expiryDate.gte = addDays(3);
         expiryDate.lte = addDays(7);
         break;
-      case 'danger':
+      case "danger":
         expiryDate.lt = addDays(3);
         break;
     }
@@ -289,6 +300,7 @@ export class ContentsService {
       contentTypeId: content.contentTypeId,
       contentValue: content.contentValue,
       uploadedImageId: content.uploadedImageId ?? null,
+      showInDocumentation: content.showInDocumentation ?? true,
       expiryDays: content.expiryDays ?? null,
       expiryDate: content.expiryDate,
       createdAt: content.createdAt,

@@ -72,16 +72,17 @@ model ContentType {
 }
 
 model SubProjectContent {
-  id              Int       @id @default(autoincrement())
-  subProjectId    Int       @map("sub_project_id")
-  contentTypeId   Int       @map("content_type_id")
-  contentValue    String?   @map("content_value")
-  uploadedImageId Int?      @map("uploaded_image_id")
-  expiryDays      Int?      @map("expiry_days")
-  expiryDate      DateTime? @map("expiry_date") @db.Date
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-  isActive        Boolean   @default(true) @map("is_active")
+  id                  Int       @id @default(autoincrement())
+  subProjectId        Int       @map("sub_project_id")
+  contentTypeId       Int       @map("content_type_id")
+  contentValue        String?   @map("content_value")
+  uploadedImageId     Int?      @map("uploaded_image_id")
+  expiryDays          Int?      @map("expiry_days")
+  expiryDate          DateTime? @map("expiry_date") @db.Date
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  isActive            Boolean   @default(true) @map("is_active")
+  showInDocumentation Boolean   @default(true) @map("show_in_documentation")
 
   subProject    SubProject     @relation(fields: [subProjectId], references: [id])
   contentType   ContentType    @relation(fields: [contentTypeId], references: [id])

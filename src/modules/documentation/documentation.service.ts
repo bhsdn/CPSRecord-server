@@ -1,9 +1,9 @@
-import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import { PrismaService } from '../../common/database/prisma.service';
-import { resolveExpiryStatus } from '../../common/utils/date.util';
-import { buildPaginationResponse } from '../../common/utils/response.util';
-import { QueryDocumentationDto } from './dto/query-documentation.dto';
+import { Injectable } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
+import { PrismaService } from "../../common/database/prisma.service";
+import { resolveExpiryStatus } from "../../common/utils/date.util";
+import { buildPaginationResponse } from "../../common/utils/response.util";
+import { QueryDocumentationDto } from "./dto/query-documentation.dto";
 
 @Injectable()
 export class DocumentationService {
@@ -19,8 +19,8 @@ export class DocumentationService {
       ...(search
         ? {
             OR: [
-              { name: { contains: search, mode: 'insensitive' } },
-              { description: { contains: search, mode: 'insensitive' } },
+              { name: { contains: search, mode: "insensitive" } },
+              { description: { contains: search, mode: "insensitive" } },
             ],
           }
         : {}),
@@ -35,25 +35,28 @@ export class DocumentationService {
       this.prisma.subProject.count({ where }),
       this.prisma.subProject.findMany({
         where,
-        orderBy: [{ projectId: 'asc' }, { sortOrder: 'asc' }],
+        orderBy: [{ projectId: "asc" }, { sortOrder: "asc" }],
         skip: (page - 1) * limit,
         take: limit,
         include: {
           project: { include: { category: true } },
           contents: {
-            where: { isActive: true },
+            where: {
+              isActive: true,
+              showInDocumentation: true, // 只获取允许在文档中显示的内容
+            },
             include: { contentType: true },
           },
           textCommands: {
             where: { isActive: true },
-            orderBy: { createdAt: 'desc' },
+            orderBy: { createdAt: "desc" },
           },
         },
       }),
     ]);
 
     const documents = subProjects.map((subProject) =>
-      this.mapDocumentation(subProject),
+      this.mapDocumentation(subProject)
     );
 
     return buildPaginationResponse(documents, total, page, limit);
@@ -99,7 +102,7 @@ export class DocumentationService {
         }
         return acc;
       },
-      {} as Record<string, unknown>,
+      {} as Record<string, unknown>
     );
 
     return {
