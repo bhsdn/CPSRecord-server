@@ -21,4 +21,14 @@ export class CreateContentTypeDto {
   @IsOptional()
   @IsBoolean({ message: '是否系统内置类型必须是布尔值' })
   isSystem?: boolean = false;
+
+  @ApiProperty({ 
+    description: '内容默认是否在文档中显示', 
+    default: true, 
+    required: false,
+    example: true 
+  })
+  @IsOptional()
+  @IsBoolean({ message: '默认是否在文档中显示必须是布尔值' })
+  defaultShowInDocumentation?: boolean = true;
 }

@@ -3,190 +3,78 @@
   "stateHistory": [
     {
       "from": "initial",
-      "command": "project",
-      "timestamp": "2025-10-07T17:06:50.050Z",
-      "args": [
-        {
-          "workingDirectory": "F:\\User\\bgh\\Project\\Vue3\\CPSRecord-Project\\CPSRecord-server",
-          "ideType": "cursor"
-        }
-      ]
-    },
-    {
-      "from": "initial",
-      "command": "discover",
-      "timestamp": "2025-10-07T17:06:54.644Z",
-      "args": []
-    },
-    {
-      "from": "initial",
-      "command": "project",
-      "timestamp": "2025-10-07T17:07:34.524Z",
-      "args": [
-        {
-          "workingDirectory": "F:\\User\\bgh\\Project\\Vue3\\CPSRecord-Project\\CPSRecord-server",
-          "ideType": "cursor"
-        }
-      ]
-    },
-    {
-      "from": "initial",
-      "command": "discover",
-      "timestamp": "2025-10-07T17:07:35.075Z",
-      "args": []
-    },
-    {
-      "from": "initial",
       "command": "action",
-      "timestamp": "2025-10-07T17:07:39.893Z",
+      "timestamp": "2025-10-10T16:06:01.275Z",
       "args": [
         "nestjs-backend-dev"
       ]
     },
     {
       "from": "initial",
+      "command": "project",
+      "timestamp": "2025-10-10T16:06:07.155Z",
+      "args": [
+        {
+          "workingDirectory": "F:\\User\\bgh\\Project\\Vue3\\CPSRecord-Project\\CPSRecord-server",
+          "ideType": "cursor"
+        }
+      ]
+    },
+    {
+      "from": "initial",
+      "command": "discover",
+      "timestamp": "2025-10-10T16:06:10.702Z",
+      "args": []
+    },
+    {
+      "from": "initial",
+      "command": "action",
+      "timestamp": "2025-10-10T16:06:15.420Z",
+      "args": [
+        "nestjs-backend-dev"
+      ]
+    },
+    {
+      "from": "initial",
+      "command": "action",
+      "timestamp": "2025-10-10T16:09:40.998Z",
+      "args": [
+        "nestjs-backend-dev"
+      ]
+    },
+    {
+      "from": "initial",
+      "command": "recall",
+      "timestamp": "2025-10-10T16:09:48.568Z",
+      "args": [
+        "nestjs-backend-dev",
+        "showInDocumentation SubProjectContent 文档显示控制"
+      ]
+    },
+    {
+      "from": "initial",
       "command": "remember",
-      "timestamp": "2025-10-07T17:15:16.643Z",
+      "timestamp": "2025-10-10T16:10:00.070Z",
       "args": [
         {
           "role": "nestjs-backend-dev",
           "engrams": [
             {
-              "content": "为CPSRecord项目的文档中心和项目分类模块添加了完整的分页功能。使用Prisma事务同时获取count和findMany，通过buildPaginationResponse工具函数统一返回格式。分页参数：page默认1，limit默认10最大100。",
-              "schema": "分页功能 - Prisma事务 - buildPaginationResponse - 文档中心 - 项目分类",
+              "content": "为SubProjectContent表添加showInDocumentation字段实现内容显示控制。该字段为Boolean类型，默认true，控制内容是否在文档中心显示。在documentation.service中通过where条件过滤：contents: { where: { isActive: true, showInDocumentation: true }}，确保只返回公开内容",
+              "schema": "showInDocumentation - SubProjectContent - 文档显示控制 - documentation.service - 内容过滤",
+              "strength": 0.9,
+              "type": "PATTERN"
+            },
+            {
+              "content": "Projects和SubProjects模块的API设计理念：管理后台使用的API返回所有内容（包括隐藏的），文档站点使用专门的Documentation API只返回公开内容。这样实现了职责分离：管理功能看全部，展示功能看公开",
+              "schema": "API设计 - 职责分离 - 管理后台 - 文档站点 - 内容过滤",
               "strength": 0.8,
-              "type": "PATTERN"
-            },
-            {
-              "content": "NestJS分页实现标准模式：1.DTO添加page/limit参数并使用class-validator验证 2.Service使用$transaction([count, findMany])确保数据一致性 3.使用skip和take实现分页 4.Controller添加@ApiQuery装饰器完善Swagger文档 5.响应dataType从array改为object",
-              "schema": "NestJS分页 - DTO验证 - Prisma事务 - skip-take - Swagger文档 - 响应格式",
-              "strength": 0.9,
-              "type": "PATTERN"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "from": "initial",
-      "command": "remember",
-      "timestamp": "2025-10-07T17:25:57.845Z",
-      "args": [
-        {
-          "role": "cps-dev-expert",
-          "engrams": [
-            {
-              "content": "三个模块分页实现完成：1.项目管理-使用projects直接展示后端分页数据，参数page/limit/search/categoryId 2.项目分类-fetchCategories返回分页信息，参数page/limit/includeInactive 3.文档中心-fetchDocumentation返回分页信息，注意API使用search而非keyword",
-              "schema": "分页实现 - 项目管理 - 项目分类 - 文档中心 - el-pagination - fetchProjects - fetchCategories - fetchDocumentation",
-              "strength": 0.9,
-              "type": "PATTERN"
-            },
-            {
-              "content": "分页实现关键点：1.前端不再使用filteredProjects做筛选，直接使用projects展示后端分页结果 2.watch监听搜索和筛选条件变化，自动重置到第1页 3.store返回{total,page,limit,totalPages}结构供组件使用 4.分页组件放在el-card中，使用justify-center居中",
-              "schema": "分页最佳实践 - 后端分页 - 前后端分离 - watch监听 - 重置页码",
-              "strength": 0.85,
-              "type": "PATTERN"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "from": "initial",
-      "command": "remember",
-      "timestamp": "2025-10-07T17:30:57.001Z",
-      "args": [
-        {
-          "role": "cps-dev-expert",
-          "engrams": [
-            {
-              "content": "分页组件固定在底部的实现：1.使用flex布局container{display:flex,flex-direction:column} 2.内容区content{flex:1,overflow-y:auto} 3.分页footer{margin-top:auto,position:sticky,bottom:0} 4.三个模块都使用相同的样式结构",
-              "schema": "分页固定底部 - flex布局 - sticky定位 - overflow-y - margin-top:auto",
-              "strength": 0.9,
-              "type": "PATTERN"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "from": "initial",
-      "command": "remember",
-      "timestamp": "2025-10-07T17:36:48.514Z",
-      "args": [
-        {
-          "role": "cps-dev-expert",
-          "engrams": [
-            {
-              "content": "移动端分页优化方案：1.使用window.innerWidth<768检测isMobile 2.响应式layout：移动端'prev,pager,next'，桌面端'total,sizes,prev,pager,next,jumper' 3.添加:small=\"isMobile\"属性 4.window.addEventListener('resize',checkMobile)监听窗口变化 5.移动端样式优化：减小padding，调整min-width和height",
-              "schema": "移动端优化 - 响应式分页 - window.innerWidth - resize监听 - :small - media query",
-              "strength": 0.95,
-              "type": "PATTERN"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "from": "initial",
-      "command": "remember",
-      "timestamp": "2025-10-07T17:41:52.644Z",
-      "args": [
-        {
-          "role": "cps-dev-expert",
-          "engrams": [
-            {
-              "content": "页面头部空间优化方案：1.标题从 text-2xl 改为 text-lg 2.移除描述文字，将统计信息放在标题下方 3.优化文案：用“2个项目”替代“项目总数：2” 4.减小卡片padding从1.5rem到1rem 5.移动端进一步压缩到0.75rem 6.图标大小设置为14px",
-              "schema": "头部优化 - padding优化 - 标题大小 - 文案简化 - 空间节省",
-              "strength": 0.85,
-              "type": "PATTERN"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "from": "initial",
-      "command": "remember",
-      "timestamp": "2025-10-07T17:50:51.453Z",
-      "args": [
-        {
-          "role": "cps-dev-expert",
-          "engrams": [
-            {
-              "content": "AppHeader移动端空间优化：1.Logo从h-12 w-12缩小为h-10 w-10，图标从text-2xl改为text-xl 2.标题从text-xl缩小为text-base 3.隐藏描述文字只在md:block显示 4.padding从py-4改为py-3在移动端 5.统计信息在移动端完全隐藏hidden md:flex 6.导航按钮从px-4 py-2缩小为px-3 py-1.5，文字从text-sm改为text-xs 7.添加overflow-x-auto和scrollbar-hide实现横向滚动",
-              "schema": "AppHeader优化 - 移动端紧凑 - 响应式尺寸 - 隐藏次要信息 - 横向滚动 - scrollbar-hide",
-              "strength": 0.9,
-              "type": "PATTERN"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "from": "initial",
-      "command": "remember",
-      "timestamp": "2025-10-07T17:54:57.932Z",
-      "args": [
-        {
-          "role": "cps-dev-expert",
-          "engrams": [
-            {
-              "content": "移动端布局切换实现：1.App.vue中使用isMobile检测屏幕宽度<768px 2.桌面端使用AppHeader+main布局 3.移动端使用MobileLayout组件 4.创建MobileNavigation作为底部导航 5.MobileLayout提供header(56px)+main(滚动)+footer结构 6.showBack根据路由路径动态控制",
-              "schema": "移动端布局 - MobileLayout - 底部导航 - 响应式切换 - isMobile - AppHeader",
-              "strength": 0.95,
-              "type": "PATTERN"
-            },
-            {
-              "content": "MobileNavigation底部导航设计：1.使用flex平均分布space-around 2.图标+文字纵向排列flex-direction:column 3.激活状态用color:#3b82f6高亮 4.点击反馈:active加scale(0.95) 5.图标size=20，文字font-size:11px 6.添加box-shadow增加层次感",
-              "schema": "底部导航 - MobileNavigation - 图标文字 - 激活状态 - 点击反馈",
-              "strength": 0.85,
-              "type": "PATTERN"
+              "type": "LINK"
             }
           ]
         }
       ]
     }
   ],
-  "lastUpdated": "2025-10-07T17:54:57.945Z"
+  "lastUpdated": "2025-10-10T16:10:00.089Z"
 }
