@@ -83,7 +83,10 @@ export class ContentsService {
           ...(dto.uploadedImageId
             ? { uploadedImageId: dto.uploadedImageId }
             : {}),
-          showInDocumentation: dto.showInDocumentation ?? contentType.defaultShowInDocumentation ?? true,
+          showInDocumentation:
+            dto.showInDocumentation ??
+            contentType.defaultShowInDocumentation ??
+            true,
           expiryDays: contentType.hasExpiry ? dto.expiryDays : null,
           expiryDate: contentType.hasExpiry
             ? (calculateExpiryDate(dto.expiryDays) ?? undefined)

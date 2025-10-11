@@ -59,13 +59,13 @@ model ProjectCategory {
 }
 
 model ContentType {
-  id                        Int      @id @default(autoincrement())
-  name                      String   @unique @db.VarChar(100)
-  fieldType                 String   @map("field_type") @db.VarChar(50)
-  hasExpiry                 Boolean  @default(false) @map("has_expiry")
-  isSystem                  Boolean  @default(false) @map("is_system")
+  id                         Int      @id @default(autoincrement())
+  name                       String   @unique @db.VarChar(100)
+  fieldType                  String   @map("field_type") @db.VarChar(50)
+  hasExpiry                  Boolean  @default(false) @map("has_expiry")
+  isSystem                   Boolean  @default(false) @map("is_system")
   defaultShowInDocumentation Boolean  @default(true) @map("default_show_in_documentation")
-  createdAt                 DateTime @default(now()) @map("created_at")
+  createdAt                  DateTime @default(now()) @map("created_at")
 
   contents SubProjectContent[]
 
