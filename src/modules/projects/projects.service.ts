@@ -1,11 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../common/database/prisma.service';
-import { CreateProjectDto } from './dto/create-project.dto';
-import { UpdateProjectDto } from './dto/update-project.dto';
-import { QueryProjectDto } from './dto/query-project.dto';
-import { buildPaginationResponse } from '../../common/utils/response.util';
-import { Prisma } from '@prisma/client';
-import { resolveExpiryStatus } from '../../common/utils/date.util';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../../common/database/prisma.service";
+import { CreateProjectDto } from "./dto/create-project.dto";
+import { UpdateProjectDto } from "./dto/update-project.dto";
+import { QueryProjectDto } from "./dto/query-project.dto";
+import { buildPaginationResponse } from "../../common/utils/response.util";
+import { Prisma } from "@prisma/client";
+import { resolveExpiryStatus } from "../../common/utils/date.util";
 
 @Injectable()
 export class ProjectsService {
@@ -22,8 +22,8 @@ export class ProjectsService {
       ...(search
         ? {
             OR: [
-              { name: { contains: search, mode: 'insensitive' } },
-              { description: { contains: search, mode: 'insensitive' } },
+              { name: { contains: search, mode: "insensitive" } },
+              { description: { contains: search, mode: "insensitive" } },
             ],
           }
         : {}),
@@ -35,10 +35,7 @@ export class ProjectsService {
       this.prisma.project.findMany({
         where,
         // 多级排序：先按分类排序权重升序，再按项目更新时间倒序
-        orderBy: [
-          { category: { sortOrder: 'desc' } },
-          { updatedAt: 'desc' },
-        ],
+        orderBy: [{ category: { sortOrder: "desc" } }, { updatedAt: "desc" }],
         skip: (page - 1) * limit,
         take: limit,
         include: {
@@ -62,7 +59,7 @@ export class ProjectsService {
       updatedAt: project.updatedAt,
       subProjectCount: project.subProjects.length,
       documentationEnabledCount: project.subProjects.filter(
-        (item) => item.documentationEnabled,
+        (item) => item.documentationEnabled
       ).length,
     }));
 
@@ -76,7 +73,7 @@ export class ProjectsService {
         category: true,
         subProjects: {
           where: { isActive: true },
-          orderBy: { sortOrder: 'asc' },
+          orderBy: { sortOrder: "asc" },
           include: {
             project: { include: { category: true } },
             contents: {
@@ -85,7 +82,7 @@ export class ProjectsService {
             },
             textCommands: {
               where: { isActive: true },
-              orderBy: { createdAt: 'desc' },
+              orderBy: { createdAt: "desc" },
             },
           },
         },
@@ -93,7 +90,7 @@ export class ProjectsService {
     });
 
     if (!project) {
-      throw new NotFoundException('项目不存在');
+      throw new NotFoundException("项目不存在");
     }
 
     // 聚合子项目、内容、口令等信息，方便前端一次性渲染
@@ -106,7 +103,7 @@ export class ProjectsService {
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
       subProjects: project.subProjects.map((subProject) =>
-        this.mapSubProject(subProject),
+        this.mapSubProject(subProject)
       ),
     };
   }
@@ -188,7 +185,7 @@ export class ProjectsService {
       }),
     ]);
 
-    return { message: '项目删除成功' };
+    return { message: "项目删除成功" };
   }
 
   async getSubProjects(projectId: number) {
@@ -196,7 +193,7 @@ export class ProjectsService {
 
     const subProjects = await this.prisma.subProject.findMany({
       where: { projectId, isActive: true },
-      orderBy: { sortOrder: 'asc' },
+      orderBy: { sortOrder: "asc" },
       include: {
         contents: {
           where: { isActive: true },
@@ -204,7 +201,7 @@ export class ProjectsService {
         },
         textCommands: {
           where: { isActive: true },
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
         },
         project: { include: { category: true } },
       },
@@ -221,7 +218,7 @@ export class ProjectsService {
     });
 
     if (!exists) {
-      throw new NotFoundException('项目不存在');
+      throw new NotFoundException("项目不存在");
     }
   }
 
@@ -234,6 +231,7 @@ export class ProjectsService {
         subProjectId: content.subProjectId,
         contentTypeId: content.contentTypeId,
         contentValue: content.contentValue,
+        showInDocumentation: content.showInDocumentation ?? true,
         expiryDays: content.expiryDays ?? null,
         expiryDate: content.expiryDate,
         createdAt: content.createdAt,
@@ -304,7 +302,7 @@ export class ProjectsService {
     });
 
     if (!exists) {
-      throw new NotFoundException('项目分类不存在或已停用');
+      throw new NotFoundException("项目分类不存在或已停用");
     }
   }
 }

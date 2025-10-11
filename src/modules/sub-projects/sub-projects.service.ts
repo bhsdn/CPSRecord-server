@@ -1,11 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../common/database/prisma.service';
-import { CreateSubProjectDto } from './dto/create-sub-project.dto';
-import { UpdateSubProjectDto } from './dto/update-sub-project.dto';
-import { QuerySubProjectDto } from './dto/query-sub-project.dto';
-import { ReorderSubProjectDto } from './dto/reorder-sub-project.dto';
-import { Prisma } from '@prisma/client';
-import { resolveExpiryStatus } from '../../common/utils/date.util';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../../common/database/prisma.service";
+import { CreateSubProjectDto } from "./dto/create-sub-project.dto";
+import { UpdateSubProjectDto } from "./dto/update-sub-project.dto";
+import { QuerySubProjectDto } from "./dto/query-sub-project.dto";
+import { ReorderSubProjectDto } from "./dto/reorder-sub-project.dto";
+import { Prisma } from "@prisma/client";
+import { resolveExpiryStatus } from "../../common/utils/date.util";
 
 @Injectable()
 export class SubProjectsService {
@@ -23,8 +23,8 @@ export class SubProjectsService {
       ...(search
         ? {
             OR: [
-              { name: { contains: search, mode: 'insensitive' } },
-              { description: { contains: search, mode: 'insensitive' } },
+              { name: { contains: search, mode: "insensitive" } },
+              { description: { contains: search, mode: "insensitive" } },
             ],
           }
         : {}),
@@ -32,16 +32,16 @@ export class SubProjectsService {
 
     const subProjects = await this.prisma.subProject.findMany({
       where,
-      orderBy: { sortOrder: 'asc' },
+      orderBy: { sortOrder: "asc" },
       include: {
         project: { include: { category: true } },
-        contents: { 
-          where: { isActive: true }, 
+        contents: {
+          where: { isActive: true },
           include: { contentType: true, uploadedImage: true },
         },
         textCommands: {
           where: { isActive: true },
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
         },
       },
     });
@@ -54,19 +54,19 @@ export class SubProjectsService {
       where: { id, isActive: true },
       include: {
         project: { include: { category: true } },
-        contents: { 
-          where: { isActive: true }, 
+        contents: {
+          where: { isActive: true },
           include: { contentType: true, uploadedImage: true },
         },
         textCommands: {
           where: { isActive: true },
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
         },
       },
     });
 
     if (!subProject) {
-      throw new NotFoundException('子项目不存在');
+      throw new NotFoundException("子项目不存在");
     }
 
     return this.mapSubProject(subProject);
@@ -123,7 +123,7 @@ export class SubProjectsService {
       }),
     ]);
 
-    return { message: '子项目删除成功' };
+    return { message: "子项目删除成功" };
   }
 
   async reorder(dto: ReorderSubProjectDto) {
@@ -131,11 +131,11 @@ export class SubProjectsService {
       this.prisma.subProject.update({
         where: { id: item.id },
         data: { sortOrder: item.sortOrder },
-      }),
+      })
     );
 
     await this.prisma.$transaction(updates);
-    return { message: '子项目排序更新成功' };
+    return { message: "子项目排序更新成功" };
   }
 
   private async ensureExists(id: number) {
@@ -144,7 +144,7 @@ export class SubProjectsService {
     });
 
     if (!subProject) {
-      throw new NotFoundException('子项目不存在');
+      throw new NotFoundException("子项目不存在");
     }
 
     return subProject;
@@ -157,7 +157,7 @@ export class SubProjectsService {
     });
 
     if (!project) {
-      throw new NotFoundException('所属项目不存在');
+      throw new NotFoundException("所属项目不存在");
     }
   }
 
@@ -165,7 +165,7 @@ export class SubProjectsService {
     // 新增子项目时默认排在最后
     const latest = await this.prisma.subProject.findFirst({
       where: { projectId, isActive: true },
-      orderBy: { sortOrder: 'desc' },
+      orderBy: { sortOrder: "desc" },
       select: { sortOrder: true },
     });
 
@@ -181,6 +181,7 @@ export class SubProjectsService {
         subProjectId: content.subProjectId,
         contentTypeId: content.contentTypeId,
         contentValue: content.contentValue,
+        showInDocumentation: content.showInDocumentation ?? true,
         uploadedImageId: content.uploadedImageId ?? null,
         expiryDays: content.expiryDays ?? null,
         expiryDate: content.expiryDate,
