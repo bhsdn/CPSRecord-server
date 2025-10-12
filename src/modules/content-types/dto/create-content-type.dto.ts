@@ -7,6 +7,16 @@ export class CreateContentTypeDto {
   @Length(1, 100, { message: "类型名称长度必须在1-100个字符之间" })
   name!: string;
 
+  @ApiProperty({
+    description: "类型描述",
+    example: "用于展示活动图片的链接",
+    required: false,
+  })
+  @IsOptional()
+  @IsString({ message: "类型描述必须是字符串" })
+  @Length(0, 500, { message: "类型描述长度不能超过500个字符" })
+  description?: string;
+
   @ApiProperty({ description: "字段类型", example: "url" })
   @IsString({ message: "字段类型必须是字符串" })
   @Length(1, 50, { message: "字段类型长度必须在1-50个字符之间" })

@@ -61,6 +61,7 @@ model ProjectCategory {
 model ContentType {
   id                         Int      @id @default(autoincrement())
   name                       String   @unique @db.VarChar(100)
+  description                String?  @db.VarChar(500)
   fieldType                  String   @map("field_type") @db.VarChar(50)
   hasExpiry                  Boolean  @default(false) @map("has_expiry")
   isSystem                   Boolean  @default(false) @map("is_system")
